@@ -3,11 +3,11 @@ import pandas as pd
 import plotly.express as px
 import plotly.io as pio
 
-# 🎨 Configurar tema de gráficos
+# 🎨 Tema de gráficos
 pio.templates.default = "seaborn"
 color_palette = px.colors.sequential.Greens
 
-# 📂 Cargar datos desde Google Sheets como CSV
+# 📂 Cargar datos desde Google Sheets (CSV público)
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVxG-bO1D5mkgUFCU35drRV4tyXT9aRaW6q4zzWGa9nFAqkLVdZxaIjwD1cEMJIAXuI4xTBlhHS1og/pub?gid=991630809&single=true&output=csv"
 
 @st.cache_data
@@ -24,11 +24,11 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 🎨 Estilos generales
+# 🌟 Estilos generales con fondo blanco
 st.markdown("""
 <style>
     .stApp {
-        background-color: #f0fdf4;
+        background-color: #ffffff;
         padding: 20px;
     }
     h1, h2, h3 {
@@ -36,6 +36,14 @@ st.markdown("""
     }
     [data-testid="stSidebar"] {
         background-color: #e8f5e9;
+    }
+    /* 💨 Animación de entrada global */
+    [data-testid="stAppViewContainer"] {
+        animation: fadeIn 0.6s ease-in-out;
+    }
+    @keyframes fadeIn {
+        from {opacity: 0;}
+        to {opacity: 1;}
     }
 </style>
 """, unsafe_allow_html=True)
@@ -64,13 +72,11 @@ if analista_sel != "Todos":
 if estado_sel != "Todos":
     df_filtrado = df_filtrado[df_filtrado['estado_carpeta'] == estado_sel]
 
-# 🏠 PÁGINA DE INICIO (rediseñada)
-# 🏠 PÁGINA DE INICIO (versión animada y visual)
+# 🏠 PÁGINA DE INICIO (institucional + animada)
 if pagina_actual == "Inicio":
-    # --- CSS con animaciones ---
     st.markdown("""
     <style>
-        /* 🔹 Animaciones clave */
+        /* 🔹 Animaciones */
         @keyframes fadeIn {
             from {opacity: 0; transform: translateY(-10px);}
             to {opacity: 1; transform: translateY(0);}
@@ -79,40 +85,18 @@ if pagina_actual == "Inicio":
             from {opacity: 0; transform: translateY(30px);}
             to {opacity: 1; transform: translateY(0);}
         }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(46,125,50, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(46,125,50, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(46,125,50, 0); }
-        }
 
-        /* 🔹 Estructura y estilo */
-        .logo-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            animation: fadeIn 1.2s ease-in-out;
-        }
-        .logo {
-            height: 65px;
-            opacity: 0;
-            animation: fadeIn 1.5s forwards;
-        }
-        .logo:nth-child(1) {animation-delay: 0.2s;}
-        .logo:nth-child(2) {animation-delay: 0.4s;}
-        .logo:nth-child(3) {animation-delay: 0.6s;}
-
+        /* 🔹 Título y botones */
         .titulo {
             text-align: center;
             color: #2e7d32;
             font-size: 40px;
             font-weight: 700;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
             opacity: 0;
-            animation: fadeIn 1.8s ease-in-out forwards;
-            animation-delay: 0.8s;
+            animation: fadeIn 1s ease-in-out forwards;
+            animation-delay: 0.3s;
         }
-
         .boton-verde {
             display: block;
             background-color: #ffffff;
@@ -125,55 +109,59 @@ if pagina_actual == "Inicio":
             margin: 15px 0;
             padding: 12px 20px;
             width: 250px;
-            transition: all 0.3s ease;
+            transition: all 0.25s ease;
             text-decoration: none;
             opacity: 0;
             animation: slideUp 1s ease-in-out forwards;
         }
-
-        .boton-verde:nth-child(1) { animation-delay: 1.0s; }
-        .boton-verde:nth-child(2) { animation-delay: 1.2s; }
-        .boton-verde:nth-child(3) { animation-delay: 1.4s; }
-        .boton-verde:nth-child(4) { animation-delay: 1.6s; }
+        .boton-verde:nth-child(1) { animation-delay: 0.5s; }
+        .boton-verde:nth-child(2) { animation-delay: 0.7s; }
+        .boton-verde:nth-child(3) { animation-delay: 0.9s; }
+        .boton-verde:nth-child(4) { animation-delay: 1.1s; }
 
         .boton-verde:hover {
             background-color: #2e7d32;
             color: #ffffff;
+            box-shadow: 0 4px 10px rgba(46, 125, 50, 0.3);
             transform: scale(1.04);
-            animation: pulse 1.2s infinite;
         }
     </style>
     """, unsafe_allow_html=True)
 
-    # --- ENCABEZADO CON LOGOS ---
-    st.markdown(
-        """
-        <div class='logo-container'>
-            <img class='logo' src='assets/Logp GP FUAA.png'>
-            <img class='logo' src='assets/Logo Tablero.jpg'>
-            <img class='logo' src='assets/Dian.png'>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    # --- LOGOS SUPERIORES ---
+    col_logo1, col_logo2, col_logo3 = st.columns([1, 1, 1])
+    with col_logo1:
+        st.image("assets/Logp GP FUAA.png", use_container_width=True)
+    with col_logo2:
+        st.image("assets/Logo Tablero.jpg", use_container_width=True)
+    with col_logo3:
+        st.image("assets/Dian.png", use_container_width=True)
 
-    # --- TÍTULO CON ANIMACIÓN ---
+    # --- TÍTULO PRINCIPAL ---
     st.markdown("<h1 class='titulo'>Seguimiento Metas</h1>", unsafe_allow_html=True)
 
-    # --- SECCIÓN PRINCIPAL (botones + imagen) ---
+    # --- BOTONES Y IMAGEN PRINCIPAL ---
     col1, col2 = st.columns([1, 1])
 
     with col1:
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        st.markdown("<a class='boton-verde' href='?pagina=Resumen'>Resumen</a>", unsafe_allow_html=True)
-        st.markdown("<a class='boton-verde' href='?pagina=Analistas'>Analistas</a>", unsafe_allow_html=True)
-        st.markdown("<a class='boton-verde' href='?pagina=Supervisores'>Supervisores</a>", unsafe_allow_html=True)
-        st.markdown("<a class='boton-verde' href='?pagina=Equipos'>Equipos</a>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("📊 Resumen", key="btn_resumen"):
+            st.query_params["pagina"] = "Resumen"
+            st.rerun()
+        if st.button("👤 Analistas", key="btn_analistas"):
+            st.query_params["pagina"] = "Analistas"
+            st.rerun()
+        if st.button("🧑‍🏫 Supervisores", key="btn_supervisores"):
+            st.query_params["pagina"] = "Supervisores"
+            st.rerun()
+        if st.button("🤝 Equipos", key="btn_equipos"):
+            st.query_params["pagina"] = "Equipos"
+            st.rerun()
 
     with col2:
         st.image("assets/Logo Tablero.jpg", use_container_width=True)
 
-# 📈 Página RESUMEN
+# 📈 RESUMEN
 elif pagina_actual == "Resumen":
     st.title("📊 Resumen general")
 
@@ -186,67 +174,52 @@ elif pagina_actual == "Resumen":
     with col4:
         st.subheader("📈 Estado de carpetas")
         fig_estado = px.histogram(
-            df_filtrado,
-            x="estado_carpeta",
-            color="estado_carpeta",
-            text_auto=True,
-            color_discrete_sequence=color_palette
+            df_filtrado, x="estado_carpeta", color="estado_carpeta",
+            text_auto=True, color_discrete_sequence=color_palette
         )
         st.plotly_chart(fig_estado, use_container_width=True)
+
     with col5:
         st.subheader("👤 Carpetas por analista")
         fig_analista = px.histogram(
-            df_filtrado,
-            x="analista",
-            color="estado_carpeta",
-            barmode="group",
-            color_discrete_sequence=color_palette
+            df_filtrado, x="analista", color="estado_carpeta",
+            barmode="group", color_discrete_sequence=color_palette
         )
         st.plotly_chart(fig_analista, use_container_width=True)
 
     with st.expander("📄 Ver registros detallados"):
         st.dataframe(df_filtrado.head(100))
 
-# 👤 Página ANALISTAS
+# 👤 ANALISTAS
 elif pagina_actual == "Analistas":
     st.title("👨‍💼 Análisis por Analista")
-
     fig = px.histogram(
-        df_filtrado,
-        x="analista",
-        color="estado_carpeta",
-        barmode="group",
-        color_discrete_sequence=color_palette,
+        df_filtrado, x="analista", color="estado_carpeta",
+        barmode="group", color_discrete_sequence=color_palette,
         title="Estado de carpetas por analista"
     )
     st.plotly_chart(fig, use_container_width=True)
 
-# 🧑‍🏫 Página SUPERVISORES
+# 🧑‍🏫 SUPERVISORES
 elif pagina_actual == "Supervisores":
     st.title("🧑‍🏫 Supervisión general")
     if "supervisor" in df_filtrado.columns:
         fig = px.histogram(
-            df_filtrado,
-            x="supervisor",
-            color="estado_carpeta",
-            barmode="group",
-            color_discrete_sequence=color_palette,
+            df_filtrado, x="supervisor", color="estado_carpeta",
+            barmode="group", color_discrete_sequence=color_palette,
             title="Carpetas por supervisor"
         )
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.warning("No hay datos de supervisores disponibles.")
 
-# 🤝 Página EQUIPOS
+# 🤝 EQUIPOS
 elif pagina_actual == "Equipos":
     st.title("🤝 Equipos de trabajo")
     if "equipo" in df_filtrado.columns:
         fig = px.histogram(
-            df_filtrado,
-            x="equipo",
-            color="estado_carpeta",
-            barmode="group",
-            color_discrete_sequence=color_palette,
+            df_filtrado, x="equipo", color="estado_carpeta",
+            barmode="group", color_discrete_sequence=color_palette,
             title="Estado por equipo"
         )
         st.plotly_chart(fig, use_container_width=True)
