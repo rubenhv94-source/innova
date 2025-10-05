@@ -24,7 +24,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 🎨 Estilos personalizados
+# 🎨 Estilos generales
 st.markdown("""
 <style>
     .stApp {
@@ -54,7 +54,6 @@ with st.sidebar:
     st.header("🔎 Filtros generales")
     analistas = df['analista'].dropna().unique()
     analista_sel = st.selectbox("👤 Analista", ["Todos"] + list(analistas))
-
     estados = df['estado_carpeta'].dropna().unique()
     estado_sel = st.selectbox("📂 Estado de carpeta", ["Todos"] + list(estados))
 
@@ -65,30 +64,78 @@ if analista_sel != "Todos":
 if estado_sel != "Todos":
     df_filtrado = df_filtrado[df_filtrado['estado_carpeta'] == estado_sel]
 
-# 🏠 Página de INICIO
+# 🏠 PÁGINA DE INICIO (rediseñada)
 if pagina_actual == "Inicio":
-    st.title("🎯 Dashboard de Valoración de Antecedentes DIAN")
-    st.markdown("### Bienvenido, selecciona una sección para comenzar:")
+    # --- CSS personalizado para el layout institucional ---
+    st.markdown("""
+    <style>
+        .logo-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .logo {
+            height: 65px;
+        }
+        .titulo {
+            text-align: center;
+            color: #2e7d32;
+            font-size: 40px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .boton-verde {
+            display: block;
+            background-color: #ffffff;
+            color: #2e7d32;
+            border: 2px solid #2e7d32;
+            border-radius: 40px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 15px 0;
+            padding: 12px 20px;
+            width: 250px;
+            transition: all 0.3s ease;
+            box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.1);
+            text-decoration: none;
+        }
+        .boton-verde:hover {
+            background-color: #2e7d32;
+            color: #ffffff;
+            transform: scale(1.03);
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
-    col1, col2 = st.columns(2)
+    # --- ENCABEZADO CON LOGOS ---
+    st.markdown(
+        """
+        <div class='logo-container'>
+            <img class='logo' src='assets/Logp GP FUAA.png'>
+            <img class='logo' src='assets/Logo Tablero.jpg'>
+            <img class='logo' src='assets/Dian.png'>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # --- TÍTULO CENTRAL ---
+    st.markdown("<h1 class='titulo'>Seguimiento Metas</h1>", unsafe_allow_html=True)
+
+    # --- ESTRUCTURA DE PÁGINA (botones a la izquierda / imagen a la derecha) ---
+    col1, col2 = st.columns([1, 1])
+
     with col1:
-        if st.button("📊 Ir a Resumen"):
-            st.query_params["pagina"] = "Resumen"
-            st.rerun()
-    with col2:
-        if st.button("👤 Ir a Analistas"):
-            st.query_params["pagina"] = "Analistas"
-            st.rerun()
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.markdown("<a class='boton-verde' href='?pagina=Resumen'>Resumen</a>", unsafe_allow_html=True)
+        st.markdown("<a class='boton-verde' href='?pagina=Analistas'>Analistas</a>", unsafe_allow_html=True)
+        st.markdown("<a class='boton-verde' href='?pagina=Supervisores'>Supervisores</a>", unsafe_allow_html=True)
+        st.markdown("<a class='boton-verde' href='?pagina=Equipos'>Equipos</a>", unsafe_allow_html=True)
 
-    col3, col4 = st.columns(2)
-    with col3:
-        if st.button("🧑‍🏫 Ir a Supervisores"):
-            st.query_params["pagina"] = "Supervisores"
-            st.rerun()
-    with col4:
-        if st.button("🤝 Ir a Equipos"):
-            st.query_params["pagina"] = "Equipos"
-            st.rerun()
+    with col2:
+        st.image("assets/Logo Tablero.jpg", use_container_width=True)
 
 # 📈 Página RESUMEN
 elif pagina_actual == "Resumen":
@@ -110,7 +157,6 @@ elif pagina_actual == "Resumen":
             color_discrete_sequence=color_palette
         )
         st.plotly_chart(fig_estado, use_container_width=True)
-
     with col5:
         st.subheader("👤 Carpetas por analista")
         fig_analista = px.histogram(
@@ -142,7 +188,6 @@ elif pagina_actual == "Analistas":
 # 🧑‍🏫 Página SUPERVISORES
 elif pagina_actual == "Supervisores":
     st.title("🧑‍🏫 Supervisión general")
-
     if "supervisor" in df_filtrado.columns:
         fig = px.histogram(
             df_filtrado,
@@ -159,7 +204,6 @@ elif pagina_actual == "Supervisores":
 # 🤝 Página EQUIPOS
 elif pagina_actual == "Equipos":
     st.title("🤝 Equipos de trabajo")
-
     if "equipo" in df_filtrado.columns:
         fig = px.histogram(
             df_filtrado,
