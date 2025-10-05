@@ -12,12 +12,11 @@ CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVxG-bO1D5mkgUFCU35d
 
 @st.cache_data
 def cargar_datos():
-    df = pd.read_csv(CSV_URL, dtype=str)
-    return df
+    return pd.read_csv(CSV_URL, dtype=str)
 
 df = cargar_datos()
 
-# 🚧 Configuración general de la página
+# 🚧 Configuración de página
 st.set_page_config(
     page_title="Dashboard VA",
     page_icon="🎯",
@@ -32,8 +31,8 @@ st.markdown("""
         background-color: #f0fdf4;
         padding: 20px;
     }
-    .css-1d391kg {  /* Título principal */
-        color: #2e7d32 !important;
+    h1, h2, h3 {
+        color: #2e7d32;
     }
     [data-testid="stSidebar"] {
         background-color: #e8f5e9;
@@ -41,18 +40,15 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 🧭 Navegación con query_params
-pagina = st.query_params.get("pagina", "Inicio")
-
-# 📚 Menú de navegación en barra lateral
-st.sidebar.title("📁 Módulos disponibles")
+# ✅ Navegación sincronizada con query_params
+query_params = st.query_params
+pagina = query_params.get("pagina", "Inicio")
 secciones = ["Inicio", "Resumen", "Analistas", "Supervisores", "Equipos"]
-st.sidebar.radio(
-    "Ir a la sección:",
-    secciones,
-    index=secciones.index(pagina),
-    key="pagina_selector"
-)
+
+seleccion_lateral = st.sidebar.radio("Ir a la sección:", secciones, index=secciones.index(pagina))
+if seleccion_lateral != pagina:
+    st.query_params["pagina"] = seleccion_lateral
+    st.stop()
 
 # 🎛 Filtros generales
 with st.sidebar:
@@ -70,7 +66,7 @@ if analista_sel != "Todos":
 if estado_sel != "Todos":
     df_filtrado = df_filtrado[df_filtrado['estado_carpeta'] == estado_sel]
 
-# 🏠 INICIO: Página principal con índice visual
+# 🏠 Página de INICIO
 if pagina == "Inicio":
     st.title("🎯 Dashboard de Valoración de Antecedentes DIAN")
     st.markdown("### Bienvenido, selecciona una sección para comenzar:")
@@ -79,19 +75,22 @@ if pagina == "Inicio":
     with col1:
         if st.button("📊 Ir a Resumen"):
             st.query_params["pagina"] = "Resumen"
+            st.stop()
     with col2:
         if st.button("👤 Ir a Analistas"):
             st.query_params["pagina"] = "Analistas"
-
+            st.stop()
     col3, col4 = st.columns(2)
     with col3:
         if st.button("🧑‍🏫 Ir a Supervisores"):
             st.query_params["pagina"] = "Supervisores"
+            st.stop()
     with col4:
         if st.button("🤝 Ir a Equipos"):
             st.query_params["pagina"] = "Equipos"
+            st.stop()
 
-# 📈 RESUMEN
+# 📈 Página RESUMEN
 elif pagina == "Resumen":
     st.title("📊 Resumen general")
 
@@ -111,7 +110,6 @@ elif pagina == "Resumen":
             color_discrete_sequence=color_palette
         )
         st.plotly_chart(fig_estado, use_container_width=True)
-
     with col5:
         st.subheader("👤 Carpetas por analista")
         fig_analista = px.histogram(
@@ -126,10 +124,9 @@ elif pagina == "Resumen":
     with st.expander("📄 Ver registros detallados"):
         st.dataframe(df_filtrado.head(100))
 
-# 👤 ANALISTAS
+# 👤 Página ANALISTAS
 elif pagina == "Analistas":
     st.title("👨‍💼 Análisis por Analista")
-
     fig = px.histogram(
         df_filtrado,
         x="analista",
@@ -140,10 +137,9 @@ elif pagina == "Analistas":
     )
     st.plotly_chart(fig, use_container_width=True)
 
-# 🧑‍🏫 SUPERVISORES
+# 🧑‍🏫 Página SUPERVISORES
 elif pagina == "Supervisores":
     st.title("🧑‍🏫 Supervisión general")
-
     if "supervisor" in df_filtrado.columns:
         fig = px.histogram(
             df_filtrado,
@@ -157,10 +153,9 @@ elif pagina == "Supervisores":
     else:
         st.warning("No hay datos de supervisores disponibles.")
 
-# 🤝 EQUIPOS
+# 🤝 Página EQUIPOS
 elif pagina == "Equipos":
     st.title("🤝 Equipos de trabajo")
-
     if "equipo" in df_filtrado.columns:
         fig = px.histogram(
             df_filtrado,
