@@ -73,24 +73,32 @@ def business_days_since_start(end_date: date) -> int:
     rng = pd.bdate_range(START_DATE, end_date)  # L-V
     return len(rng)
 
-def meta_acumulada(modulo: str, n_sujetos: int, today: date | None = None) -> int:
+def meta_acumulada(modulo: str, df_mod: pd.DataFrame, today: date | None = None) -> int:
     """
-    Meta acumulada al 'ayer' según módulo:
-    - Analistas: 17 por día hábil por analista
-    - Supervisores: 34 (doble) por día hábil por supervisor
-    - Equipos: 17 por día hábil por analista (sumando analistas por equipo)
+    Calcula la meta acumulada hasta el día anterior basada en sujetos únicos del módulo.
+    
+    - Analistas: 17 carpetas/día por analista
+    - Supervisores: 34 carpetas/día por supervisor
+    - Equipos: 17 carpetas/día por analista (suma por equipo)
     """
     if today is None:
         today = date.today()
     ayer = today - timedelta(days=1)
     dias_habiles = business_days_since_start(ayer)
-    if dias_habiles <= 0 or n_sujetos <= 0:
+    if dias_habiles <= 0:
         return 0
 
-    if modulo == "Supervisores":
-        por_sujeto = 34
-    else:
-        por_sujeto = 17
+    col = sujetos_col(modulo)
+    if col not in df_mod.columns:
+        return 0
+
+    sujetos_unicos = df_mod[col].replace("", np.nan).dropna().unique()
+    n_sujetos = len(sujetos_unicos)
+
+    if n_sujetos == 0:
+        return 0
+
+    por_sujeto = 34 if modulo == "Supervisores" else 17
     return dias_habiles * por_sujeto * n_sujetos
 
 def estados_validos(modulo: str) -> list[str]:
@@ -321,41 +329,39 @@ elif pagina_actual == "Resumen":
 def modulo_vista(nombre_modulo: str):
     st.title(f"🔎 {nombre_modulo}")
     dfm = prepara_df_modulo(df_filtrado, nombre_modulo)
-    sujeto = sujetos_col(nombre_modulo)
 
-    # Sujetos únicos (para meta acumulada total)
-    if sujeto in dfm.columns:
-        sujetos_unicos = dfm[sujeto].replace("", np.nan).dropna().unique()
-        n_sujetos = len(sujetos_unicos) if len(sujetos_unicos) > 0 else 0
-    else:
-        n_sujetos = 0
-
-    # Meta total (al -1 día)
-    meta_total = meta_acumulada(nombre_modulo, n_sujetos)
+    # Calcular meta acumulada (usando sujetos únicos del df_mod)
+    meta_total = meta_acumulada(nombre_modulo, dfm)
 
     # Desarrolladas totales del módulo (para KPI)
     validos = estados_validos(nombre_modulo)
-    desarrolladas_total = (dfm["estado_carpeta"].str.lower().isin(validos)).sum() if "estado_carpeta" in dfm.columns else 0
+    desarrolladas_total = (
+        dfm["estado_carpeta"].str.lower().isin(validos)
+    ).sum() if "estado_carpeta" in dfm.columns else 0
     diferencia_total = desarrolladas_total - meta_total
 
     # KPIs
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("📁 Total carpetas", len(dfm))
     c2.metric("✅ Desarrolladas", desarrolladas_total)
-    c3.metric(f"🎯 Meta a la fecha", meta_total)
+    c3.metric("🎯 Meta a la fecha", meta_total)
     c4.metric("Δ Diferencia (Desarrolladas - Meta)", diferencia_total)
+
+    # Cálculo de meta individual (para atraso por sujeto)
+    per_subject = 34 if nombre_modulo == "Supervisores" else 17
+    dias_habiles = business_days_since_start(date.today() - timedelta(days=1))
+    meta_individual = per_subject * dias_habiles
 
     # Gráfico 1: barras por estado + línea meta
     fig1 = grafico_estado_con_meta(dfm, nombre_modulo, meta_total)
     st.plotly_chart(fig1, use_container_width=True)
 
-    # Cálculo de meta por sujeto para categorías
-    per_subject = 34 if nombre_modulo == "Supervisores" else 17
-    fig2 = grafico_categorias_barh(dfm, nombre_modulo, per_subject * business_days_since_start(date.today() - timedelta(days=1)))
+    # Gráfico 2: Categorías de atraso
+    fig2 = grafico_categorias_barh(dfm, nombre_modulo, meta_individual)
     st.plotly_chart(fig2, use_container_width=True)
 
-    # Tabla final requerida
-    tabla = tabla_resumen(dfm, nombre_modulo, per_subject * business_days_since_start(date.today() - timedelta(days=1)))
+    # Tabla resumen por sujeto
+    tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
     st.subheader("📋 Resumen por sujeto")
     st.dataframe(tabla, use_container_width=True)
 
