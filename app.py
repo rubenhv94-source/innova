@@ -114,7 +114,6 @@ if pagina_actual == "Inicio":
         """
         <div class='logo-container'>
             <img class='logo' src='assets/Logp GP FUAA.png'>
-            <img class='logo' src='assets/Logo Tablero.jpg'>
             <img class='logo' src='assets/Dian.png'>
         </div>
         """,
