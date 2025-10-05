@@ -3,11 +3,11 @@ import pandas as pd
 import plotly.express as px
 import plotly.io as pio
 
-# 🎨 Tema gráfico
+# 🎨 Configurar tema de gráficos
 pio.templates.default = "seaborn"
 color_palette = px.colors.sequential.Greens
 
-# 🧾 Fuente de datos desde Google Sheets
+# 📂 Cargar datos desde Google Sheets como CSV
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVxG-bO1D5mkgUFCU35drRV4tyXT9aRaW6q4zzWGa9nFAqkLVdZxaIjwD1cEMJIAXuI4xTBlhHS1og/pub?gid=991630809&single=true&output=csv"
 
 @st.cache_data
@@ -16,7 +16,7 @@ def cargar_datos():
 
 df = cargar_datos()
 
-# 🚧 Configuración de página
+# 🛠 Configuración de página
 st.set_page_config(
     page_title="Dashboard VA",
     page_icon="🎯",
@@ -40,15 +40,14 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ✅ Navegación sincronizada con query_params
-query_params = st.query_params
-pagina = query_params.get("pagina", "Inicio")
+# 🧭 Navegación moderna con query_params + rerun
+pagina_actual = st.query_params.get("pagina", "Inicio")
 secciones = ["Inicio", "Resumen", "Analistas", "Supervisores", "Equipos"]
 
-seleccion_lateral = st.sidebar.radio("Ir a la sección:", secciones, index=secciones.index(pagina))
-if seleccion_lateral != pagina:
-    st.query_params["pagina"] = seleccion_lateral
-    st.stop()
+seleccion = st.sidebar.radio("Ir a la sección:", secciones, index=secciones.index(pagina_actual))
+if seleccion != pagina_actual:
+    st.query_params["pagina"] = seleccion
+    st.experimental_rerun()
 
 # 🎛 Filtros generales
 with st.sidebar:
@@ -67,7 +66,7 @@ if estado_sel != "Todos":
     df_filtrado = df_filtrado[df_filtrado['estado_carpeta'] == estado_sel]
 
 # 🏠 Página de INICIO
-if pagina == "Inicio":
+if pagina_actual == "Inicio":
     st.title("🎯 Dashboard de Valoración de Antecedentes DIAN")
     st.markdown("### Bienvenido, selecciona una sección para comenzar:")
 
@@ -75,23 +74,24 @@ if pagina == "Inicio":
     with col1:
         if st.button("📊 Ir a Resumen"):
             st.query_params["pagina"] = "Resumen"
-            st.stop()
+            st.experimental_rerun()
     with col2:
         if st.button("👤 Ir a Analistas"):
             st.query_params["pagina"] = "Analistas"
-            st.stop()
+            st.experimental_rerun()
+
     col3, col4 = st.columns(2)
     with col3:
         if st.button("🧑‍🏫 Ir a Supervisores"):
             st.query_params["pagina"] = "Supervisores"
-            st.stop()
+            st.experimental_rerun()
     with col4:
         if st.button("🤝 Ir a Equipos"):
             st.query_params["pagina"] = "Equipos"
-            st.stop()
+            st.experimental_rerun()
 
 # 📈 Página RESUMEN
-elif pagina == "Resumen":
+elif pagina_actual == "Resumen":
     st.title("📊 Resumen general")
 
     col1, col2, col3 = st.columns(3)
@@ -110,6 +110,7 @@ elif pagina == "Resumen":
             color_discrete_sequence=color_palette
         )
         st.plotly_chart(fig_estado, use_container_width=True)
+
     with col5:
         st.subheader("👤 Carpetas por analista")
         fig_analista = px.histogram(
@@ -125,8 +126,9 @@ elif pagina == "Resumen":
         st.dataframe(df_filtrado.head(100))
 
 # 👤 Página ANALISTAS
-elif pagina == "Analistas":
+elif pagina_actual == "Analistas":
     st.title("👨‍💼 Análisis por Analista")
+
     fig = px.histogram(
         df_filtrado,
         x="analista",
@@ -138,8 +140,9 @@ elif pagina == "Analistas":
     st.plotly_chart(fig, use_container_width=True)
 
 # 🧑‍🏫 Página SUPERVISORES
-elif pagina == "Supervisores":
+elif pagina_actual == "Supervisores":
     st.title("🧑‍🏫 Supervisión general")
+
     if "supervisor" in df_filtrado.columns:
         fig = px.histogram(
             df_filtrado,
@@ -154,8 +157,9 @@ elif pagina == "Supervisores":
         st.warning("No hay datos de supervisores disponibles.")
 
 # 🤝 Página EQUIPOS
-elif pagina == "Equipos":
+elif pagina_actual == "Equipos":
     st.title("🤝 Equipos de trabajo")
+
     if "equipo" in df_filtrado.columns:
         fig = px.histogram(
             df_filtrado,
