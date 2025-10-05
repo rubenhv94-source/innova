@@ -73,33 +73,38 @@ def business_days_since_start(end_date: date) -> int:
     rng = pd.bdate_range(START_DATE, end_date)  # L-V
     return len(rng)
 
-def meta_acumulada(modulo: str, df_mod: pd.DataFrame, today: date | None = None) -> int:
+def meta_acumulada(modulo: str, df_mod: pd.DataFrame, today: date | None = None) -> tuple[int, int]:
     """
-    Calcula la meta acumulada hasta el día anterior basada en sujetos únicos del módulo.
-    
-    - Analistas: 17 carpetas/día por analista
-    - Supervisores: 34 carpetas/día por supervisor
-    - Equipos: 17 carpetas/día por analista (suma por equipo)
+    Retorna la meta acumulada y el número de sujetos únicos del módulo.
     """
     if today is None:
         today = date.today()
     ayer = today - timedelta(days=1)
     dias_habiles = business_days_since_start(ayer)
     if dias_habiles <= 0:
-        return 0
+        return 0, 0
 
     col = sujetos_col(modulo)
     if col not in df_mod.columns:
-        return 0
+        return 0, 0
 
-    sujetos_unicos = df_mod[col].replace("", np.nan).dropna().unique()
+    sujetos_unicos = (
+        df_mod[col]
+        .astype(str)
+        .str.strip()
+        .str.lower()
+        .replace("", pd.NA)
+        .dropna()
+        .unique()
+    )
+
     n_sujetos = len(sujetos_unicos)
-
     if n_sujetos == 0:
-        return 0
+        return 0, 0
 
     por_sujeto = 34 if modulo == "Supervisores" else 17
-    return dias_habiles * por_sujeto * n_sujetos
+    meta = dias_habiles * por_sujeto * n_sujetos
+    return meta, n_sujetos
 
 def estados_validos(modulo: str) -> list[str]:
     if modulo == "Supervisores":
@@ -330,8 +335,11 @@ def modulo_vista(nombre_modulo: str):
     st.title(f"🔎 {nombre_modulo}")
     dfm = prepara_df_modulo(df_filtrado, nombre_modulo)
 
-    # Calcular meta acumulada (usando sujetos únicos del df_mod)
-    meta_total = meta_acumulada(nombre_modulo, dfm)
+    # Calcular meta acumulada (y contar sujetos únicos)
+    meta_total, n_sujetos = meta_acumulada(nombre_modulo, dfm)
+
+    # Mostrar número de sujetos únicos
+    st.info(f"👥 Sujetos únicos detectados: **{n_sujetos}**")
 
     # Desarrolladas totales del módulo (para KPI)
     validos = estados_validos(nombre_modulo)
@@ -347,20 +355,17 @@ def modulo_vista(nombre_modulo: str):
     c3.metric("🎯 Meta a la fecha", meta_total)
     c4.metric("Δ Diferencia (Desarrolladas - Meta)", diferencia_total)
 
-    # Cálculo de meta individual (para atraso por sujeto)
+    # Cálculo de meta individual
     per_subject = 34 if nombre_modulo == "Supervisores" else 17
     dias_habiles = business_days_since_start(date.today() - timedelta(days=1))
     meta_individual = per_subject * dias_habiles
 
-    # Gráfico 1: barras por estado + línea meta
     fig1 = grafico_estado_con_meta(dfm, nombre_modulo, meta_total)
     st.plotly_chart(fig1, use_container_width=True)
 
-    # Gráfico 2: Categorías de atraso
     fig2 = grafico_categorias_barh(dfm, nombre_modulo, meta_individual)
     st.plotly_chart(fig2, use_container_width=True)
 
-    # Tabla resumen por sujeto
     tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
     st.subheader("📋 Resumen por sujeto")
     st.dataframe(tabla, use_container_width=True)
