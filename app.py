@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
+import plotly.io as pio
+pio.templates.default = "seaborn"
+
 # URL pública al CSV de Google Sheets
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVxG-bO1D5mkgUFCU35drRV4tyXT9aRaW6q4zzWGa9nFAqkLVdZxaIjwD1cEMJIAXuI4xTBlhHS1og/pub?gid=991630809&single=true&output=csv"
 
@@ -19,6 +22,25 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 st.title("📊 Valoración de antecedentes DIAN")
+
+st.markdown(
+    """
+    <style>
+        .main {
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #4B8BBE;
+        }
+        .stApp {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # Filtros laterales
 with st.sidebar:
