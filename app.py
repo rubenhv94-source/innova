@@ -12,8 +12,13 @@ def cargar_datos():
 
 df = cargar_datos()
 
-st.set_page_config(page_title="Dashboard VA", layout="wide")
-st.title("📊 Dashboard VA - Consolidado Final")
+st.set_page_config(
+    page_title="Dashboard VA",
+    page_icon="🎯",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+st.title("📊 Valoración de antecedentes DIAN")
 
 # Filtros laterales
 with st.sidebar:
