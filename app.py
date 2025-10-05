@@ -335,11 +335,13 @@ def modulo_vista(nombre_modulo: str):
     st.title(f"🔎 {nombre_modulo}")
     dfm = prepara_df_modulo(df_filtrado, nombre_modulo)
 
+    dias_habiles = business_days_since_start(date.today() - timedelta(days=1))
+
     # Calcular meta acumulada (y contar sujetos únicos)
     meta_total, n_sujetos = meta_acumulada(nombre_modulo, dfm)
 
     # Mostrar número de sujetos únicos
-    st.info(f"👥 Sujetos únicos detectados: **{rng}**")
+    st.info(f"👥 Sujetos únicos detectados: **{n_sujetos}** — 🗓️ Días hábiles considerados: **{dias_habiles}**")
 
     # Desarrolladas totales del módulo (para KPI)
     validos = estados_validos(nombre_modulo)
