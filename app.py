@@ -47,7 +47,7 @@ secciones = ["Inicio", "Resumen", "Analistas", "Supervisores", "Equipos"]
 seleccion = st.sidebar.radio("Ir a la sección:", secciones, index=secciones.index(pagina_actual))
 if seleccion != pagina_actual:
     st.query_params["pagina"] = seleccion
-    st.experimental_rerun()
+    st.rerun()
 
 # 🎛 Filtros generales
 with st.sidebar:
