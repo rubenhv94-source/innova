@@ -74,21 +74,21 @@ if pagina_actual == "Inicio":
     with col1:
         if st.button("📊 Ir a Resumen"):
             st.query_params["pagina"] = "Resumen"
-            st.experimental_rerun()
+            st.rerun()
     with col2:
         if st.button("👤 Ir a Analistas"):
             st.query_params["pagina"] = "Analistas"
-            st.experimental_rerun()
+            st.rerun()
 
     col3, col4 = st.columns(2)
     with col3:
         if st.button("🧑‍🏫 Ir a Supervisores"):
             st.query_params["pagina"] = "Supervisores"
-            st.experimental_rerun()
+            st.rerun()
     with col4:
         if st.button("🤝 Ir a Equipos"):
             st.query_params["pagina"] = "Equipos"
-            st.experimental_rerun()
+            st.rerun()
 
 # 📈 Página RESUMEN
 elif pagina_actual == "Resumen":
