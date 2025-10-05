@@ -359,11 +359,11 @@ def modulo_vista(nombre_modulo: str):
     st.subheader("📋 Resumen por sujeto")
     st.dataframe(tabla, use_container_width=True)
 
-elif pagina_actual == "Analistas":
-    modulo_vista("Analistas")
-
-elif pagina_actual == "Supervisores":
-    modulo_vista("Supervisores")
-
-elif pagina_actual == "Equipos":
-    modulo_vista("Equipos")
+    elif pagina_actual == "Analistas":
+        modulo_vista("Analistas")
+    
+    elif pagina_actual == "Supervisores":
+        modulo_vista("Supervisores")
+    
+    elif pagina_actual == "Equipos":
+        modulo_vista("Equipos")
