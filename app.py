@@ -64,7 +64,7 @@ def cargar_datos(url: str) -> pd.DataFrame:
 df = cargar_datos(CSV_URL)
 
 # ============ UTILIDADES ============
-START_DATE = date(2025, 9, 25)  # desde el 25 de septiembre 2024
+START_DATE = date(2025, 9, 16)
 
 def business_days_since_start(end_date: date) -> int:
     """Días hábiles (L-V) entre START_DATE y end_date (inclusive)."""
