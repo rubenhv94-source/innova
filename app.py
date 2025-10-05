@@ -43,7 +43,9 @@ st.markdown("""
 
 # 📚 Menú lateral
 st.sidebar.title("📁 Módulos disponibles")
-pagina = st.sidebar.radio("Ir a la sección:", ["Inicio", "Resumen", "Analistas", "Supervisores", "Equipos"])
+# Lee el parámetro si existe, si no muestra "Inicio"
+pagina_actual = st.query_params.get("pagina", "Inicio")
+pagina = st.sidebar.radio("Ir a la sección:", ["Inicio", "Resumen", "Analistas", "Supervisores", "Equipos"], index=["Inicio", "Resumen", "Analistas", "Supervisores", "Equipos"].index(pagina_actual))
 
 # 🎛 Filtros generales
 with st.sidebar:
@@ -70,18 +72,18 @@ if pagina == "Inicio":
     col1, col2 = st.columns(2)
     with col1:
         if st.button("📊 Resumen"):
-            st.experimental_set_query_params(pagina="Resumen")
+            st.query_params["pagina"] = "Resumen"
     with col2:
         if st.button("👤 Analistas"):
-            st.experimental_set_query_params(pagina="Analistas")
-    
+            st.query_params["pagina"] = "Analistas"
+
     col3, col4 = st.columns(2)
     with col3:
         if st.button("🧑‍🏫 Supervisores"):
-            st.experimental_set_query_params(pagina="Supervisores")
+            st.query_params["pagina"] = "Supervisores"
     with col4:
         if st.button("🤝 Equipos"):
-            st.experimental_set_query_params(pagina="Equipos")
+            st.query_params["pagina"] = "Equipos"
 
 # 📈 Página de RESUMEN
 elif pagina == "Resumen":
