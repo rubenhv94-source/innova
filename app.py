@@ -19,12 +19,12 @@ df = cargar_datos()
 # 🛠 Configuración de página
 st.set_page_config(
     page_title="Dashboard VA",
-    page_icon="🌱",
+    page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# 🌟 Estilos generales con fondo blanco
+# 🌟 Estilos globales
 st.markdown("""
 <style>
     .stApp {
@@ -37,7 +37,7 @@ st.markdown("""
     [data-testid="stSidebar"] {
         background-color: #e8f5e9;
     }
-    /* 💨 Animación de entrada global */
+    /* 💨 Animación global */
     [data-testid="stAppViewContainer"] {
         animation: fadeIn 0.6s ease-in-out;
     }
@@ -72,7 +72,7 @@ if analista_sel != "Todos":
 if estado_sel != "Todos":
     df_filtrado = df_filtrado[df_filtrado['estado_carpeta'] == estado_sel]
 
-# 🏠 PÁGINA DE INICIO (institucional + animada)
+# 🏠 Página de INICIO (institucional + botones suaves)
 if pagina_actual == "Inicio":
     st.markdown("""
     <style>
@@ -86,7 +86,7 @@ if pagina_actual == "Inicio":
             to {opacity: 1; transform: translateY(0);}
         }
 
-        /* 🔹 Título y botones */
+        /* 🔹 Título */
         .titulo {
             text-align: center;
             color: #2e7d32;
@@ -97,20 +97,23 @@ if pagina_actual == "Inicio":
             animation: fadeIn 1s ease-in-out forwards;
             animation-delay: 0.3s;
         }
+
+        /* 🔹 Botones tipo neumorfismo suave */
         .boton-verde {
             display: block;
             background-color: #ffffff;
             color: #2e7d32;
             border: 2px solid #2e7d32;
-            border-radius: 40px;
+            border-radius: 50px;
             text-align: center;
             font-size: 18px;
             font-weight: 600;
-            margin: 15px 0;
+            margin: 20px 0;
             padding: 12px 20px;
             width: 250px;
             transition: all 0.25s ease;
             text-decoration: none;
+            box-shadow: 0px 4px 8px rgba(46, 125, 50, 0.15);
             opacity: 0;
             animation: slideUp 1s ease-in-out forwards;
         }
@@ -120,10 +123,10 @@ if pagina_actual == "Inicio":
         .boton-verde:nth-child(4) { animation-delay: 1.1s; }
 
         .boton-verde:hover {
-            background-color: #2e7d32;
-            color: #ffffff;
-            box-shadow: 0 4px 10px rgba(46, 125, 50, 0.3);
-            transform: scale(1.04);
+            background-color: #ffffff;
+            color: #2e7d32;
+            box-shadow: 0px 6px 15px rgba(46, 125, 50, 0.35);
+            transform: translateY(-2px);
         }
     </style>
     """, unsafe_allow_html=True)
