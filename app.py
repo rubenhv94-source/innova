@@ -19,7 +19,7 @@ df = cargar_datos()
 # 🛠 Configuración de página
 st.set_page_config(
     page_title="Dashboard VA",
-    page_icon="🎯",
+    page_icon="🌱",
     layout="wide",
     initial_sidebar_state="expanded"
 )
