@@ -339,7 +339,7 @@ def modulo_vista(nombre_modulo: str):
     meta_total, n_sujetos = meta_acumulada(nombre_modulo, dfm)
 
     # Mostrar número de sujetos únicos
-    st.info(f"👥 Sujetos únicos detectados: **{n_sujetos}**")
+    st.info(f"👥 Sujetos únicos detectados: **{rng}**")
 
     # Desarrolladas totales del módulo (para KPI)
     validos = estados_validos(nombre_modulo)
