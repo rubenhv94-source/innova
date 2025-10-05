@@ -65,26 +65,54 @@ if estado_sel != "Todos":
     df_filtrado = df_filtrado[df_filtrado['estado_carpeta'] == estado_sel]
 
 # 🏠 PÁGINA DE INICIO (rediseñada)
+# 🏠 PÁGINA DE INICIO (versión animada y visual)
 if pagina_actual == "Inicio":
-    # --- CSS personalizado para el layout institucional ---
+    # --- CSS con animaciones ---
     st.markdown("""
     <style>
+        /* 🔹 Animaciones clave */
+        @keyframes fadeIn {
+            from {opacity: 0; transform: translateY(-10px);}
+            to {opacity: 1; transform: translateY(0);}
+        }
+        @keyframes slideUp {
+            from {opacity: 0; transform: translateY(30px);}
+            to {opacity: 1; transform: translateY(0);}
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(46,125,50, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(46,125,50, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(46,125,50, 0); }
+        }
+
+        /* 🔹 Estructura y estilo */
         .logo-container {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 15px;
+            animation: fadeIn 1.2s ease-in-out;
         }
         .logo {
             height: 65px;
+            opacity: 0;
+            animation: fadeIn 1.5s forwards;
         }
+        .logo:nth-child(1) {animation-delay: 0.2s;}
+        .logo:nth-child(2) {animation-delay: 0.4s;}
+        .logo:nth-child(3) {animation-delay: 0.6s;}
+
         .titulo {
             text-align: center;
             color: #2e7d32;
             font-size: 40px;
             font-weight: 700;
-            margin-bottom: 10px;
+            margin-bottom: 20px;
+            opacity: 0;
+            animation: fadeIn 1.8s ease-in-out forwards;
+            animation-delay: 0.8s;
         }
+
         .boton-verde {
             display: block;
             background-color: #ffffff;
@@ -98,13 +126,21 @@ if pagina_actual == "Inicio":
             padding: 12px 20px;
             width: 250px;
             transition: all 0.3s ease;
-            box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.1);
             text-decoration: none;
+            opacity: 0;
+            animation: slideUp 1s ease-in-out forwards;
         }
+
+        .boton-verde:nth-child(1) { animation-delay: 1.0s; }
+        .boton-verde:nth-child(2) { animation-delay: 1.2s; }
+        .boton-verde:nth-child(3) { animation-delay: 1.4s; }
+        .boton-verde:nth-child(4) { animation-delay: 1.6s; }
+
         .boton-verde:hover {
             background-color: #2e7d32;
             color: #ffffff;
-            transform: scale(1.03);
+            transform: scale(1.04);
+            animation: pulse 1.2s infinite;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -114,16 +150,17 @@ if pagina_actual == "Inicio":
         """
         <div class='logo-container'>
             <img class='logo' src='assets/Logp GP FUAA.png'>
+            <img class='logo' src='assets/Logo Tablero.jpg'>
             <img class='logo' src='assets/Dian.png'>
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    # --- TÍTULO CENTRAL ---
+    # --- TÍTULO CON ANIMACIÓN ---
     st.markdown("<h1 class='titulo'>Seguimiento Metas</h1>", unsafe_allow_html=True)
 
-    # --- ESTRUCTURA DE PÁGINA (botones a la izquierda / imagen a la derecha) ---
+    # --- SECCIÓN PRINCIPAL (botones + imagen) ---
     col1, col2 = st.columns([1, 1])
 
     with col1:
