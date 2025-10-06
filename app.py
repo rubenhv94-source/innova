@@ -294,19 +294,19 @@ with st.sidebar:
 
     if "profesional" in df.columns and df["profesional"].str.strip().any():
         opciones_prof = ["Todos"] + sorted(df["profesional"].unique())
-        sel_prof = st.selectbox("👩‍⚕️ Profesional", opciones_prof)
+        sel_prof = st.selectbox("👩‍💼 Profesional", opciones_prof)
 
     if "supervisor" in df.columns:
         opciones_sup = ["Todos"] + sorted(df["supervisor"].unique())
-        sel_sup = st.selectbox("🧑‍🏫 Supervisor", opciones_sup)
+        sel_sup = st.selectbox("🕵️‍♀️ Supervisor", opciones_sup)
 
     if "analista" in df.columns:
         opciones_ana = ["Todos"] + sorted(df["analista"].unique())
-        sel_ana = st.selectbox("👤 Analista", opciones_ana)
+        sel_ana = st.selectbox("👨‍💻 Analista", opciones_ana)
 
     if "estado_carpeta" in df.columns:
         opciones_estado = ["Todos"] + sorted(set(df["estado_carpeta"].str.lower().dropna().unique()) | {""})
-        sel_estado = st.selectbox("📂 Estado", opciones_estado)
+        sel_estado = st.selectbox("📤 Estado", opciones_estado)
 
     if "nivel" in df.columns:
         opciones_nivel = ["Todos"] + sorted(df["nivel"].dropna().unique())
@@ -367,10 +367,10 @@ if pagina_actual == "Resumen":
     equipo_va = df_filtrado["analista"].nunique() + df_filtrado["supervisor"].nunique()
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total carpetas", f"{len(df_filtrado):,}".replace(",", "."))
-    col2.metric("Auditadas", f"{(df_filtrado['estado_carpeta'].str.lower() == 'auditada').sum():,}".replace(",", "."))
-    col3.metric("Equipo VA", f"{equipo_va:,}".replace(",", "."))
-    col4.metric("Por asignar", f"{por_asignar:,}".replace(",", "."))
+    col1.metric("📂 Total carpetas", f"{len(df_filtrado):,}".replace(",", "."))
+    col2.metric("✔️ Auditadas", f"{(df_filtrado['estado_carpeta'].str.lower() == 'auditada').sum():,}".replace(",", "."))
+    col3.metric("👨‍👧‍👧 Equipo VA", f"{equipo_va:,}".replace(",", "."))
+    col4.metric("⚠️ Por asignar", f"{por_asignar:,}".replace(",", "."))
 
     fig_estado = grafico_estado_con_meta(df_filtrado, "Resumen", 0)
     st.plotly_chart(fig_estado, use_container_width=True)
