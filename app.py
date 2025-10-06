@@ -216,8 +216,8 @@ def grafico_avance_total(total: int, avance: int):
         mode="gauge+number",
         value=avance,
         number={
-            "font": {"size": 48, "color": "black"},
-            "valueformat": ",.0f"  # formato con separador de miles (punto o coma según configuración)
+            "font": {"size": 40, "color": "black"},
+            "valueformat": ".0f"
         },
         title={
             "text": "Avance total de carpetas",
