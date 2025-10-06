@@ -307,7 +307,7 @@ if pagina_actual == "Inicio":
 
     st.markdown("<h1 style='text-align:center; font-weight:700;'>Seguimiento de Metas VA DIAN 2667</h1>", unsafe_allow_html=True)
 
-    col_left, col_right = st.columns([1, 1])
+    col_left, col_center, col_right = st.columns([1, 1, 1])
     with col_left:
         st.write("")  # espaciado
         if st.button("Resumen", key="btn_home_resumen"):
@@ -322,7 +322,7 @@ if pagina_actual == "Inicio":
         if st.button("Equipos", key="btn_home_equipos"):
             st.query_params["pagina"] = "Equipos"
             st.rerun()
-    with center_col:
+    with col_center:
         st.image("assets/Logo Tablero.jpg", use_container_width=True)
         
 # ============ RESUMEN ============
