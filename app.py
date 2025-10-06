@@ -214,8 +214,12 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, per_subject_meta:
 
 def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
     """
-    Gauge compacto con formato europeo, línea de referencia de meta,
-    título superior, porcentaje dentro y total debajo.
+    Gauge semicircular compacto con:
+    - Título superior
+    - Porcentaje centrado un poco más abajo
+    - Total fuera del gráfico
+    - Línea roja de meta
+    - Separador de miles con punto (.) fijo
     """
 
     # Calcular porcentaje
@@ -226,18 +230,21 @@ def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
         mode="gauge+number",
         value=avance,
         number={
-            "font": {"size": 36, "color": "#1a1a1a"},
-            "valueformat": ",.0f"  # separador de miles
+            "font": {"size": 38, "color": "#1a1a1a"},
+            # separador de miles con punto fijo
+            "valueformat": ",.0f"
         },
         title={
-            "text": f"<b>Avance total de carpetas</b>",
+            "text": "<b>Avance total de carpetas</b>",
             "font": {"size": 18, "color": "#1F9924"}
         },
         gauge={
+            "shape": "semi",  # semicircular
             "axis": {
                 "range": [0, total],
-                "tickwidth": 0,
-                "tickcolor": "rgba(0,0,0,0)"
+                "tickwidth": 1,
+                "tickcolor": "#ccc",
+                "tickfont": {"size": 10}
             },
             "bar": {"color": "#2e7d32"},
             "bgcolor": "white",
@@ -251,25 +258,25 @@ def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
         domain={'x': [0, 1], 'y': [0, 1]}
     ))
 
-    # --- Porcentaje dentro del gauge (encima del número) ---
+    # --- Porcentaje dentro del gauge (más abajo) ---
     fig.add_annotation(
         text=f"{porcentaje:,.1f}%".replace(",", "X").replace(".", ",").replace("X", "."),
-        x=0.5, y=0.75, showarrow=False,
+        x=0.5, y=0.52, showarrow=False,  # más bajo que antes
         font=dict(size=16, color="#1F9924", family="Arial"),
         xanchor="center"
     )
 
-    # --- Total debajo del gauge ---
+    # --- Total debajo del gauge (centrado, fuera del arco) ---
     fig.add_annotation(
         text=f"Total: {total:,.0f}".replace(",", "X").replace(".", ",").replace("X", "."),
-        x=0.5, y=-0.20, showarrow=False,
+        x=0.5, y=-0.25, showarrow=False,
         font=dict(size=13, color="#444", family="Arial"),
         xanchor="center"
     )
 
     # --- Línea roja de referencia (meta esperada) ---
     if meta_ref and 0 < meta_ref < total:
-        theta = 180 * (meta_ref / total)  # rango semicircular
+        theta = 180 * (meta_ref / total)
         x0 = 0.5 - 0.4 * math.cos(math.radians(theta))
         y0 = 0.5 + 0.4 * math.sin(math.radians(theta))
         x1 = 0.5 - 0.47 * math.cos(math.radians(theta))
@@ -288,10 +295,10 @@ def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
             xanchor="center"
         )
 
-    # --- Ajustes visuales generales ---
+    # --- Ajustes visuales ---
     fig.update_layout(
-        margin=dict(l=20, r=20, t=80, b=50),
-        height=300,
+        margin=dict(l=20, r=20, t=70, b=60),
+        height=320,
         paper_bgcolor="#ffffff",
         font={"family": "Arial", "color": "#1a1a1a"}
     )
