@@ -237,40 +237,38 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> p
     # Asegurar que no haya nulos en estado_carpeta
     df_mod = df_mod.dropna(subset=["estado_carpeta", col])
 
-    # Normalizar estado_carpeta para evitar diferencias por mayúsculas
+    # Normalizar estado_carpeta a minúsculas
     df_mod["estado_carpeta"] = df_mod["estado_carpeta"].str.strip().str.lower()
 
-    # Definir los estados válidos por tipo de módulo
+    # Definir los estados válidos por tipo de módulo (también en minúsculas)
     if modulo.lower() == "analista":
         estados_efectivos = {"auditada", "aprobada", "calificada"}
     elif modulo.lower() == "supervisor":
         estados_efectivos = {"auditada", "aprobada"}
     else:
-        estados_efectivos = set()  # Por si se da otro tipo
+        estados_efectivos = set()
 
-    # Pivote de todos los estados
+    # Pivot de todos los estados en minúsculas
     pivot = (
         df_mod
-        .groupby([col, df_mod["estado_carpeta"].str.title()])
+        .groupby([col, "estado_carpeta"])
         .size()
         .unstack(fill_value=0)
         .reset_index()
     )
 
-    # Calcular columnas de interés
-    estados_col = [c for c in pivot.columns if c != col]
-    estados_para_analisis = [e.title() for e in estados_efectivos]
-
-    # Sumar solo los estados efectivos para "Analizadas"
+    # Calcular "Analizadas" sumando solo los estados efectivos
+    estados_en_pivot = [c for c in pivot.columns if c != col]
+    estados_para_analisis = [e for e in estados_en_pivot if e in estados_efectivos]
     pivot["Analizadas"] = pivot[estados_para_analisis].sum(axis=1)
 
-    # Calcular faltantes y atraso
+    # Calcular faltantes y categoría
     pivot["Meta"] = per_subject_meta
     pivot["Faltantes"] = pivot["Meta"] - pivot["Analizadas"]
     pivot["Categoria"] = pivot["Faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
 
-    # Reordenar columnas
-    out = pivot[[col] + estados_col + ["Analizadas", "Meta", "Faltantes", "Categoria"]]
+    # Reordenar columnas: col + todos los estados + Analizadas + Meta + Faltantes + Categoria
+    out = pivot[[col] + estados_en_pivot + ["Analizadas", "Meta", "Faltantes", "Categoria"]]
 
     # Ordenar por categoría
     categorias = ["Al día", "Atraso normal", "Atraso medio", "Atraso alto"]
