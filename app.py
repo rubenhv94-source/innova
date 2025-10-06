@@ -211,21 +211,39 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, per_subject_meta:
     fig.update_layout(showlegend=False, xaxis_title="Cantidad", yaxis_title="")
     return fig
 
-def grafico_avance_total(total: int, avance: int):
+def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
+    """
+    Gauge compacto con formato europeo y línea de referencia de meta.
+    - total: valor máximo
+    - avance: valor actual
+    - meta_ref: valor de meta esperada (opcional, dibuja una línea roja)
+    """
+
+    # Calcular porcentaje
+    porcentaje = (avance / total * 100) if total > 0 else 0
+
+    # Crear figura base
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=avance,
         number={
-            "font": {"size": 40, "color": "black"},
-            "valueformat": ".0f"
+            "font": {"size": 34, "color": "#1a1a1a"},
+            # formato europeo → separador de miles "." y decimales ","
+            "valueformat": ",.0f"
         },
         title={
-            "text": "Avance total de carpetas",
-            "font": {"size": 18, "color": "#1F9924"}
+            "text": f"<span style='font-size:16px;color:#1F9924;'>Avance total de carpetas</span><br>"
+                    f"<span style='font-size:13px;color:#444;'>{porcentaje:,.1f}%</span>",
+            "font": {"size": 14}
         },
         gauge={
-            "axis": {"range": [0, total]},
-            "bar": {"color": "#2e7d32"},  # verde consistente con el dashboard
+            "axis": {
+                "range": [0, total],
+                "tickwidth": 0,
+                "tickcolor": "rgba(0,0,0,0)"
+            },
+            "bar": {"color": "#2e7d32"},  # verde institucional
+            "bgcolor": "white",
             "steps": [
                 {"range": [0, total * 0.5], "color": "#e0f2f1"},
                 {"range": [total * 0.5, total], "color": "#a5d6a7"}
@@ -236,11 +254,41 @@ def grafico_avance_total(total: int, avance: int):
         domain={'x': [0, 1], 'y': [0, 1]}
     ))
 
-    # Centrar título y número
+    # Agregar texto pequeño con el total en la esquina inferior derecha
+    fig.add_annotation(
+        text=f"Total: {total:,.0f}".replace(",", "X").replace(".", ",").replace("X", "."),
+        x=0.9, y=0.15, showarrow=False,
+        font=dict(size=12, color="#444"), xanchor="right"
+    )
+
+    # Agregar línea roja de referencia (meta esperada)
+    if meta_ref and 0 < meta_ref < total:
+        # Calcular ángulo (en radianes) donde colocar la línea
+        import math
+        theta = 180 * (meta_ref / total)  # rango semicircular
+        x0 = 0.5 - 0.4 * math.cos(math.radians(theta))
+        y0 = 0.5 + 0.4 * math.sin(math.radians(theta))
+        x1 = 0.5 - 0.47 * math.cos(math.radians(theta))
+        y1 = 0.5 + 0.47 * math.sin(math.radians(theta))
+        fig.add_shape(
+            type="line",
+            x0=x0, y0=y0, x1=x1, y1=y1,
+            line=dict(color="red", width=3)
+        )
+        fig.add_annotation(
+            text="Meta",
+            x=x1, y=y1 + 0.05,
+            showarrow=False,
+            font=dict(size=11, color="red"),
+            xanchor="center"
+        )
+
+    # Ajustes visuales generales
     fig.update_layout(
         margin=dict(l=10, r=10, t=40, b=10),
+        height=260,  # más pequeño
         paper_bgcolor="#ffffff",
-        font={"family": "Arial", "color": "#1a1a1a"},
+        font={"family": "Arial", "color": "#1a1a1a"}
     )
 
     return fig
@@ -394,7 +442,8 @@ if pagina_actual == "Resumen":
     with colR_fig1:
         avance = df_filtrado["estado_carpeta"].str.lower().isin(["auditada"]).sum()
         total = len(df_filtrado)
-        fig_gauge = grafico_avance_total(total, avance)
+        meta_total, n_sujetos = meta_acumulada(nombre_modulo, dfm)
+        fig_gauge = grafico_avance_total(total, avance, meta_total)
         st.plotly_chart(fig_gauge, use_container_width=True)
     
     with colR_fig2:
