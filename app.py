@@ -5,6 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
 from datetime import datetime, date, timedelta
+import math
 
 # ============ CONFIG VISUAL ============
 pio.templates.default = "seaborn"
@@ -213,28 +214,24 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, per_subject_meta:
 
 def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
     """
-    Gauge compacto con formato europeo y línea de referencia de meta.
-    - total: valor máximo
-    - avance: valor actual
-    - meta_ref: valor de meta esperada (opcional, dibuja una línea roja)
+    Gauge compacto con formato europeo, línea de referencia de meta,
+    título superior, porcentaje dentro y total debajo.
     """
 
     # Calcular porcentaje
     porcentaje = (avance / total * 100) if total > 0 else 0
 
-    # Crear figura base
+    # --- Crear figura base ---
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=avance,
         number={
-            "font": {"size": 34, "color": "#1a1a1a"},
-            # formato europeo → separador de miles "." y decimales ","
-            "valueformat": ",.0f"
+            "font": {"size": 36, "color": "#1a1a1a"},
+            "valueformat": ",.0f"  # separador de miles
         },
         title={
-            "text": f"<span style='font-size:16px;color:#1F9924;'>Avance total de carpetas</span><br>"
-                    f"<span style='font-size:13px;color:#444;'>{porcentaje:,.1f}%</span>",
-            "font": {"size": 14}
+            "text": f"<b>Avance total de carpetas</b>",
+            "font": {"size": 18, "color": "#1F9924"}
         },
         gauge={
             "axis": {
@@ -242,7 +239,7 @@ def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
                 "tickwidth": 0,
                 "tickcolor": "rgba(0,0,0,0)"
             },
-            "bar": {"color": "#2e7d32"},  # verde institucional
+            "bar": {"color": "#2e7d32"},
             "bgcolor": "white",
             "steps": [
                 {"range": [0, total * 0.5], "color": "#e0f2f1"},
@@ -254,22 +251,30 @@ def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
         domain={'x': [0, 1], 'y': [0, 1]}
     ))
 
-    # Agregar texto pequeño con el total en la esquina inferior derecha
+    # --- Porcentaje dentro del gauge (encima del número) ---
     fig.add_annotation(
-        text=f"Total: {total:,.0f}".replace(",", "X").replace(".", ",").replace("X", "."),
-        x=0.9, y=0.15, showarrow=False,
-        font=dict(size=12, color="#444"), xanchor="right"
+        text=f"{porcentaje:,.1f}%".replace(",", "X").replace(".", ",").replace("X", "."),
+        x=0.5, y=0.75, showarrow=False,
+        font=dict(size=16, color="#1F9924", family="Arial"),
+        xanchor="center"
     )
 
-    # Agregar línea roja de referencia (meta esperada)
+    # --- Total debajo del gauge ---
+    fig.add_annotation(
+        text=f"Total: {total:,.0f}".replace(",", "X").replace(".", ",").replace("X", "."),
+        x=0.5, y=-0.20, showarrow=False,
+        font=dict(size=13, color="#444", family="Arial"),
+        xanchor="center"
+    )
+
+    # --- Línea roja de referencia (meta esperada) ---
     if meta_ref and 0 < meta_ref < total:
-        # Calcular ángulo (en radianes) donde colocar la línea
-        import math
         theta = 180 * (meta_ref / total)  # rango semicircular
         x0 = 0.5 - 0.4 * math.cos(math.radians(theta))
         y0 = 0.5 + 0.4 * math.sin(math.radians(theta))
         x1 = 0.5 - 0.47 * math.cos(math.radians(theta))
         y1 = 0.5 + 0.47 * math.sin(math.radians(theta))
+
         fig.add_shape(
             type="line",
             x0=x0, y0=y0, x1=x1, y1=y1,
@@ -283,10 +288,10 @@ def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
             xanchor="center"
         )
 
-    # Ajustes visuales generales
+    # --- Ajustes visuales generales ---
     fig.update_layout(
-        margin=dict(l=10, r=10, t=40, b=10),
-        height=260,  # más pequeño
+        margin=dict(l=20, r=20, t=80, b=50),
+        height=300,
         paper_bgcolor="#ffffff",
         font={"family": "Arial", "color": "#1a1a1a"}
     )
