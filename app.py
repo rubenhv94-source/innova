@@ -241,9 +241,9 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> p
     df_mod["estado_carpeta"] = df_mod["estado_carpeta"].str.strip().str.lower()
 
     # Definir los estados válidos por tipo de módulo (también en minúsculas)
-    if modulo.lower() == "analista":
+    if modulo.lower() == "analistas":
         estados_efectivos = {"auditada", "aprobada", "calificada"}
-    elif modulo.lower() == "supervisor":
+    elif modulo.lower() == "supervisores":
         estados_efectivos = {"auditada", "aprobada"}
     else:
         estados_efectivos = set()
