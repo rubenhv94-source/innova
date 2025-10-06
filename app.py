@@ -229,26 +229,23 @@ def grafico_avance_total(total: int, avance: int):
     return fig
 
 def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> pd.DataFrame:
-    col = sujetos_col(modulo)  # Ej: 'analista', 'supervisor', etc.
+    col = sujetos_col(modulo)
 
     if df_mod.empty or col not in df_mod.columns:
         return pd.DataFrame(columns=["Categoria", col.capitalize(), "Analizadas", "Meta", "Faltantes"])
 
-    # Asegurar que no haya nulos en estado_carpeta
-    df_mod = df_mod.dropna(subset=["estado_carpeta", col])
-
-    # Normalizar estado_carpeta a minúsculas
-    df_mod["estado_carpeta"] = df_mod["estado_carpeta"].str.strip().str.lower()
-
-    # Definir los estados válidos por tipo de módulo (también en minúsculas)
-    if modulo.lower() == "analistas":
+    if modulo.lower() == "analista":
         estados_efectivos = {"auditada", "aprobada", "calificada"}
-    elif modulo.lower() == "supervisores":
+    elif modulo.lower() == "supervisor":
         estados_efectivos = {"auditada", "aprobada"}
     else:
         estados_efectivos = set()
 
-    # Pivot de todos los estados en minúsculas
+    # --- Preprocesamiento ---
+    df_mod = df_mod.dropna(subset=["estado_carpeta", col])
+    df_mod["estado_carpeta"] = df_mod["estado_carpeta"].str.strip().str.lower()
+
+    # --- Pivot por estado ---
     pivot = (
         df_mod
         .groupby([col, "estado_carpeta"])
@@ -257,26 +254,28 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> p
         .reset_index()
     )
 
-    # Calcular "Analizadas" sumando solo los estados efectivos
-    estados_en_pivot = [c for c in pivot.columns if c != col]
-    estados_para_analisis = [e for e in estados_en_pivot if e in estados_efectivos]
-    pivot["Analizadas"] = pivot[estados_para_analisis].sum(axis=1)
+    # --- Asegurar que todos los ESTADOS_ORDEN estén presentes ---
+    for estado in ESTADOS_ORDEN:
+        if estado not in pivot.columns:
+            pivot[estado] = 0
 
-    # Calcular faltantes y categoría
+    # --- Calcular "Analizadas" solo con estados efectivos ---
+    pivot["Analizadas"] = pivot[[e for e in ESTADOS_ORDEN if e in estados_efectivos]].sum(axis=1)
     pivot["Meta"] = per_subject_meta
     pivot["Faltantes"] = pivot["Meta"] - pivot["Analizadas"]
     pivot["Categoria"] = pivot["Faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
 
-    # Reordenar columnas: col + todos los estados + Analizadas + Meta + Faltantes + Categoria
-    out = pivot[[col] + estados_en_pivot + ["Analizadas", "Meta", "Faltantes", "Categoria"]]
+    # --- Orden final de columnas ---
+    columnas_estado = ESTADOS_ORDEN  # Ya garantizadas arriba
+    out = pivot[[col] + columnas_estado + ["Analizadas", "Meta", "Faltantes", "Categoria"]]
 
-    # Ordenar por categoría
+    # --- Ordenar por categoría ---
     categorias = ["Al día", "Atraso normal", "Atraso medio", "Atraso alto"]
     out["Categoria"] = pd.Categorical(out["Categoria"], categories=categorias, ordered=True)
     out = out.sort_values(["Categoria", col], ascending=[True, True])
 
-    # Renombrar sujeto
-    out = out.rename(columns={col: col.capitalize()})
+    # --- Renombrar columnas de estados ---
+    out = out.rename(columns={col: col.capitalize(), **{e: ESTADOS_RENOM.get(e, e) for e in columnas_estado}})
 
     return out
 
