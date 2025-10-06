@@ -256,7 +256,7 @@ def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
     valor_formateado = f"{avance:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
     fig.add_annotation(
         text=f"<b style='font-size:36px; color:#000;'>{valor_formateado}</b>",
-        x=0.5, y=0.5, showarrow=False,
+        x=0.5, y=0.2, showarrow=False,
         xanchor="center"
     )
 
