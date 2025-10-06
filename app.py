@@ -333,7 +333,7 @@ if pagina_actual == "Inicio":
 
 # ============ RESUMEN ============
 if pagina_actual == "Resumen":
-    st.markdown("<h1>Resumen general</h1>", unsafe_allow_html=True)
+    st.title("📊 Resumen general")
     dias_habiles = business_days_since_start(date.today() - timedelta(days=1))
     st.info(f"🗓️ Días hábiles considerados: **{dias_habiles}**")
 
@@ -356,7 +356,7 @@ if pagina_actual == "Resumen":
 
 # ============ MÓDULOS CON METAS Y ATRASOS ============
 def modulo_vista(nombre_modulo: str):
-    st.markdown(f"<h1>{nombre_modulo}</h1>", unsafe_allow_html=True)
+    st.title(f"🔎 {nombre_modulo}")
     dfm = prepara_df_modulo(df_filtrado, nombre_modulo)
 
     dias_habiles = business_days_since_start(date.today() - timedelta(days=1))
