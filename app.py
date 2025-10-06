@@ -224,15 +224,20 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, per_subject_meta:
     # desarrolladas por sujeto
     dev = desarrolladas_por_sujeto(df_mod, modulo)
     if dev.empty:
-        return px.bar(title="Sin datos para mostrar")
+        return px.bar(title="<b>Sin datos para mostrar</b>")
+
     # meta por sujeto (constante)
     dev["meta"] = per_subject_meta
     dev["atraso"] = dev["meta"] - dev["desarrolladas"]
     dev["categoria"] = dev["atraso"].apply(lambda x: clasifica_categoria(int(x), modulo))
+
+    # conteo por categoría
     cat_count = dev.groupby("categoria").size().reset_index(name="cantidad")
     orden = ["Al día", "Atraso normal", "Atraso medio", "Atraso alto"]
     cat_count["categoria"] = pd.Categorical(cat_count["categoria"], categories=orden, ordered=True)
     cat_count = cat_count.sort_values("categoria")
+
+    # gráfico de barras horizontal
     fig = px.bar(
         cat_count,
         x="cantidad",
@@ -240,11 +245,21 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, per_subject_meta:
         orientation="h",
         color="categoria",
         color_discrete_sequence=COLOR_PALETTE,
-        title="Cantidad por seguimiento individual",
-        title_font=dict(size=18, color="#1F9924", family="Arial"),
+        title="<b>Cantidad por seguimiento individual</b>",
         text_auto=True,
     )
-    fig.update_layout(showlegend=False, xaxis_title="Cantidad", yaxis_title="")
+
+    # --- Ajustes de diseño ---
+    fig.update_layout(
+        showlegend=False,
+        xaxis_title="Cantidad",
+        yaxis_title="",
+        font=dict(family="Arial", size=12),
+        title_font=dict(size=18, color="#1F9924", family="Arial"),
+        plot_bgcolor="white",
+        margin=dict(l=20, r=20, t=60, b=40),
+    )
+
     return fig
 
 def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
