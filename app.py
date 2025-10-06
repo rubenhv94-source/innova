@@ -382,8 +382,6 @@ def modulo_vista(nombre_modulo: str):
         fig2 = grafico_categorias_barh(dfm, nombre_modulo, meta_individual)
         st.plotly_chart(fig2, use_container_width=True)
 
-    c1, c2, c3, c4 = st.columns(4)
-
     supervisores_filtrados = sorted(df_filtrado["supervisor"].dropna().unique())
     
     if len(supervisores_filtrados) == 1:
@@ -391,9 +389,8 @@ def modulo_vista(nombre_modulo: str):
     elif len(supervisores_filtrados) > 1:
         supervisor_label = "Supervisor: Varios"
     else:
-        supervisor_label = "Supervisor: No disponible"  # Por si no hay datos
+        supervisor_label = "Supervisor: No disponible"
     
-    # Mostrar tarjeta.
     c1.metric("Supervisor", value=supervisor_label)
     
     tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
