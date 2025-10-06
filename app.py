@@ -401,7 +401,7 @@ def modulo_vista(nombre_modulo: str):
         
     cx1, cx2 = st.columns(2)    
     cx1.metric("Supervisor", value=supervisor_label)
-    cx2.metric("Auditor", value=auditor_label)
+    cx2.metric("Profesional", value=auditor_label)
     
     tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
     st.subheader(f"Resumen {nombre_modulo}")
