@@ -41,11 +41,11 @@ st.markdown("""
         transform: translateY(-1px) !important;
         box-shadow: 0 8px 16px rgba(46,125,50,0.30) !important;
     }
-    section.main > div > div:nth-of-type(3) [data-testid="stMetricValue"] {
-        font-size: 14px !important;
-        color: #1a1a1a !important;
+    #analista-anchor + div [data-testid="stMetricValue"] {
+    font-size: 14px !important;
+    color: #1a1a1a !important;
     }
-    section.main > div > div:nth-of-type(3) [data-testid="stMetricLabel"] {
+    #analista-anchor + div [data-testid="stMetricLabel"] {
         font-size: 13px !important;
         color: #666 !important;
     }
@@ -376,7 +376,7 @@ if pagina_actual == "Resumen":
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Total carpetas", f"{len(df_filtrado):,}".replace(",", "."))
-    col2.metric("Auditadas", f"{(df_filtrado["estado_carpeta"].str.lower() == "auditada").sum():,}".replace(",", "."))
+    col2.metric("Auditadas", f"{(df_filtrado['estado_carpeta'].str.lower() == 'auditada').sum():,}".replace(",", "."))
     col3.metric("Equipo VA", f"{equipo_va:,}".replace(",", "."))
     col4.metric("Por asignar", f"{por_asignar:,}".replace(",", "."))
 
@@ -452,9 +452,9 @@ def modulo_vista(nombre_modulo: str):
     else:
         auditor_label = "No disponible"
 
-    analista_box = st.container()
+    st.markdown('<div id="analista-anchor"></div>', unsafe_allow_html=True)
     
-    with analista_box:
+    with st.container():  # este es el contenedor que será estilizado por el CSS de arriba
         cx1, cx2 = st.columns(2)
     
         if nombre_modulo == 'Analistas':
