@@ -393,8 +393,8 @@ def modulo_vista(nombre_modulo: str):
     else:
         supervisor_label = "Supervisor: No disponible"  # Por si no hay datos
     
-    # Mostrar tarjeta
-    c1.metric(label="", value=supervisor_label)
+    # Mostrar tarjeta.
+    c1.metric("Supervisor", value=supervisor_label)
     
     tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
     st.subheader(f"Resumen {nombre_modulo}")
