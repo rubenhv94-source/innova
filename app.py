@@ -598,35 +598,35 @@ def modulo_vista(nombre_modulo: str):
     
         if nombre_modulo == 'Analistas':
             with cx1:
-                custom_metric("Supervisor", supervisor_label)
+                custom_metric("🕵️‍♀️ Supervisor", supervisor_label)
             with cx2:
-                custom_metric("Profesional", auditor_label)
+                custom_metric("👩‍💼 Profesional", auditor_label)
     
         elif nombre_modulo == 'Supervisores':
             if analista_label_2:
                 cxa1, cxa2 = cx1.columns(2)
                 with cxa1:
-                    custom_metric("Analista 1", analista_label_1)
+                    custom_metric("👨‍💻 Analista1", analista_label_1)
                 with cxa2:
-                    custom_metric("Analista 2", analista_label_2)
+                    custom_metric("👨‍💻 Analista2", analista_label_2)
             else:
                 with cx1:
-                    custom_metric("Analista", analista_label_1)
+                    custom_metric("👨‍💻 Analista", analista_label_1)
             with cx2:
-                custom_metric("Profesional", auditor_label)
+                custom_metric("👩‍💼 Profesional", auditor_label)
     
         else:
             if analista_label_2:
                 cxa1, cxa2 = cx1.columns(2)
                 with cxa1:
-                    custom_metric("Analista 1", analista_label_1)
+                    custom_metric("👨‍💻 Analista1", analista_label_1)
                 with cxa2:
-                    custom_metric("Analista 2", analista_label_2)
+                    custom_metric("👨‍💻 Analista2", analista_label_2)
             else:
                 with cx1:
-                    custom_metric("Analista", analista_label_1)
+                    custom_metric("👨‍💻 Analista", analista_label_1)
             with cx2:
-                custom_metric("Profesional", auditor_label)
+                custom_metric("👩‍💼 Profesional", auditor_label)
     
     tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
     st.markdown(f"<h3 style='color:#1F9924; font-weight:600; margin-top: 1em;'>Resumen {nombre_modulo}</h3>", unsafe_allow_html=True)
