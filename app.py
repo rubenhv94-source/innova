@@ -451,9 +451,6 @@ if pagina_actual == "Resumen":
     col3.metric("👨‍👧‍👧 Equipo VA", f"{equipo_va:,}".replace(",", "."))
     col4.metric("⚠️ Por asignar", f"{por_asignar:,}".replace(",", "."))
 
-
-
-
     avance = df_filtrado["estado_carpeta"].str.lower().isin(["auditada"]).sum()
     total = len(df_filtrado)
     dfm = prepara_df_modulo(df_filtrado, "Supervisores")
@@ -461,7 +458,7 @@ if pagina_actual == "Resumen":
     fig_gauge = grafico_avance_total(total, avance, meta_total)
     st.plotly_chart(fig_gauge, use_container_width=True)
 
-    fig_estado = grafico_estado_con_meta(df_filtrado, "Resumen", 0)
+    fig_estado = grafico_estado_con_meta(df_filtrado, "Resumen", meta_total)
     st.plotly_chart(fig_estado, use_container_width=True)
 
 # ============ MÓDULOS CON METAS Y ATRASOS ============
