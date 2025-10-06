@@ -41,12 +41,13 @@ st.markdown("""
         transform: translateY(-1px) !important;
         box-shadow: 0 8px 16px rgba(46,125,50,0.30) !important;
     }
-    [data-testid="stMetricValue"] {
+    .custom-analista [data-testid="stMetricValue"] {
         font-size: 14px !important;
+        color: #1a1a1a !important;
     }
-    [data-testid="stMetricLabel"] {
+    .custom-analista [data-testid="stMetricLabel"] {
         font-size: 13px !important;
-        color: #666;
+        color: #666 !important;
     }
 )
 </style>
@@ -451,7 +452,11 @@ def modulo_vista(nombre_modulo: str):
         auditor_label = "Varios"
     else:
         auditor_label = "No disponible"
-        
+
+    st.markdown("""
+    <div class="custom-analista">
+    """, unsafe_allow_html=True)
+    
     cx1, cx2 = st.columns(2)
     if nombre_modulo == 'Analistas':
         cx1.metric("Supervisor", value=supervisor_label)
@@ -473,6 +478,8 @@ def modulo_vista(nombre_modulo: str):
             cx1.metric("Analista", value=analista_label_1)
         cx2.metric("Profesional", value=auditor_label)
         
+    st.markdown("</div>", unsafe_allow_html=True)
+    
     tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
     st.subheader(f"Resumen {nombre_modulo}")
     st.dataframe(tabla, use_container_width=True)
