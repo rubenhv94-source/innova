@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import plotly.graph_objects as go
 import plotly.io as pio
 from datetime import datetime, date, timedelta
 
@@ -55,8 +56,7 @@ CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVxG-bO1D5mkgUFCU35d
 @st.cache_data
 def cargar_datos(url: str) -> pd.DataFrame:
     df = pd.read_csv(url, dtype=str)
-    # Estandarizar columnas esperadas si existen
-    for c in ["analista", "supervisor", "equipo", "estado_carpeta", "profesional"]:
+    for c in ["analista", "supervisor", "equipo", "estado_carpeta", "profesional", "nivel"]:
         if c in df.columns:
             df[c] = df[c].fillna("").str.strip()
     return df
@@ -65,12 +65,21 @@ df = cargar_datos(CSV_URL)
 
 # ============ UTILIDADES ============
 START_DATE = date(2025, 9, 16)
+ESTADOS_ORDEN = ["asignada", "devuelta", "calificada", "aprobada", "auditada"]
+ESTADOS_RENOM = {
+    "": "Por asignar",
+    "asignada": "0. asignada",
+    "devuelta": "1. devuelta",
+    "calificada": "2. calificada",
+    "aprobada": "3. aprobada",
+    "auditada": "4. auditada"
+}
 
 def business_days_since_start(end_date: date) -> int:
     """Días hábiles (L-V) entre START_DATE y end_date (inclusive)."""
     if end_date < START_DATE:
         return 0
-    rng = pd.bdate_range(START_DATE, end_date)  # L-V
+    rng = pd.bdate_range(START_DATE, end_date)
     return len(rng)
 
 def meta_acumulada(modulo: str, df_mod: pd.DataFrame, today: date | None = None) -> tuple[int, int]:
@@ -153,15 +162,15 @@ def clasifica_categoria(atraso: int, modulo: str) -> str:
             return "Atraso alto"
 
 def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, total_meta: int):
-    # barras por estado
     conteo = (
-        df_mod.groupby("estado_carpeta", dropna=False)
-        .size()
-        .reset_index(name="cantidad")
-        .sort_values("cantidad", ascending=False)
+        df_mod["estado_carpeta"].fillna("").str.lower().map(ESTADOS_RENOM).value_counts()
+        .reindex([ESTADOS_RENOM.get(e, e) for e in ["asignada", "devuelta", "calificada", "aprobada", "auditada"] + ["Por asignar"]], fill_value=0)
+        .reset_index()
     )
-    if conteo.empty:
-        return px.bar(title="Sin datos para mostrar")
+    conteo.columns = ["estado_carpeta", "cantidad"]
+    total = conteo["cantidad"].sum()
+    conteo["porcentaje"] = (conteo["cantidad"] / total * 100).round(1)
+    conteo["label"] = conteo["cantidad"].astype(str) + " (" + conteo["porcentaje"].astype(str) + "%)"
 
     fig = px.bar(
         conteo,
@@ -169,17 +178,16 @@ def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, total_meta: int):
         y="cantidad",
         color="estado_carpeta",
         color_discrete_sequence=COLOR_PALETTE,
+        text="label",
         title=f"Distribución por estado — Meta total a la fecha: {total_meta:,}".replace(",", "."),
-        text_auto=True,
     )
-    # Línea de meta (misma y en todos los x)
     fig.add_scatter(
         x=conteo["estado_carpeta"],
         y=[total_meta] * len(conteo),
         mode="lines+markers",
         name="Meta acumulada",
     )
-    fig.update_layout(showlegend=True, xaxis_title="", yaxis_title="Cantidad")
+    fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="Cantidad")
     return fig
 
 def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int):
@@ -209,6 +217,23 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, per_subject_meta:
     fig.update_layout(showlegend=False, xaxis_title="Cantidad de sujetos", yaxis_title="")
     return fig
 
+def grafico_avance_total(total: int, avance: int):
+    fig = go.Figure(go.Indicator(
+        mode = "gauge+number",
+        value = avance,
+        title = {"text": "Avance total de carpetas"},
+        gauge = {
+            "axis": {"range": [0, total]},
+            "bar": {"color": "green"},
+            "steps" : [
+                {"range": [0, total*0.5], "color": "#e0f2f1"},
+                {"range": [total*0.5, total], "color": "#a5d6a7"}
+            ],
+        },
+        domain={'x': [0, 1], 'y': [0, 1]}
+    ))
+    return fig
+
 def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> pd.DataFrame:
     col = sujetos_col(modulo)
     dev = desarrolladas_por_sujeto(df_mod, modulo)
@@ -229,43 +254,51 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> p
     out = out.assign(Categoria=orden).sort_values(["Categoria", out.columns[1]], ascending=[True, True])
     return out
 
-# ============ NAVEGACIÓN ============
+# ============ NAVEGACION ============
 pagina_actual = st.query_params.get("pagina", "Inicio")
 secciones = ["Inicio", "Resumen", "Analistas", "Supervisores", "Equipos"]
-
 seleccion = st.sidebar.radio("Ir a la sección:", secciones, index=secciones.index(pagina_actual))
 if seleccion != pagina_actual:
     st.query_params["pagina"] = seleccion
     st.rerun()
 
-# ======== FILTROS GENERALES EN SIDEBAR ========
+# ============ SIDEBAR FILTROS ============
 with st.sidebar:
     st.header("🔎 Filtros")
-    # filtros condicionales según existencia de columnas
-    sel_prof = None
+    sel_prof = sel_sup = sel_ana = sel_estado = sel_nivel = None
+
     if "profesional" in df.columns and df["profesional"].str.strip().any():
-        opciones_prof = ["Todos"] + sorted([x for x in df["profesional"].unique() if x])
+        opciones_prof = ["Todos"] + sorted(df["profesional"].unique())
         sel_prof = st.selectbox("👩‍⚕️ Profesional", opciones_prof)
 
-    opciones_sup = ["Todos"] + sorted([x for x in df["supervisor"].unique() if x]) if "supervisor" in df.columns else ["Todos"]
-    sel_sup = st.selectbox("🧑‍🏫 Supervisor", opciones_sup)
+    if "supervisor" in df.columns:
+        opciones_sup = ["Todos"] + sorted(df["supervisor"].unique())
+        sel_sup = st.selectbox("🧑‍🏫 Supervisor", opciones_sup)
 
-    opciones_ana = ["Todos"] + sorted([x for x in df["analista"].unique() if x]) if "analista" in df.columns else ["Todos"]
-    sel_ana = st.selectbox("👤 Analista", opciones_ana)
+    if "analista" in df.columns:
+        opciones_ana = ["Todos"] + sorted(df["analista"].unique())
+        sel_ana = st.selectbox("👤 Analista", opciones_ana)
 
-    opciones_estado = ["Todos"] + sorted([x for x in df["estado_carpeta"].str.lower().unique() if isinstance(x, str)])
-    sel_estado = st.selectbox("📂 Estado", opciones_estado)
+    if "estado_carpeta" in df.columns:
+        opciones_estado = ["Todos"] + sorted(set(df["estado_carpeta"].str.lower().dropna().unique()) | {""})
+        sel_estado = st.selectbox("📂 Estado", opciones_estado)
 
-# Aplicar filtros globales
+    if "nivel" in df.columns:
+        opciones_nivel = ["Todos"] + sorted(df["nivel"].dropna().unique())
+        sel_nivel = st.selectbox("🔹 Nivel", opciones_nivel)
+
+# Aplicar filtros
 df_filtrado = df.copy()
-if sel_prof and sel_prof != "Todos" and "profesional" in df_filtrado.columns:
+if sel_prof and sel_prof != "Todos":
     df_filtrado = df_filtrado[df_filtrado["profesional"] == sel_prof]
-if sel_sup != "Todos" and "supervisor" in df_filtrado.columns:
+if sel_sup and sel_sup != "Todos":
     df_filtrado = df_filtrado[df_filtrado["supervisor"] == sel_sup]
-if sel_ana != "Todos" and "analista" in df_filtrado.columns:
+if sel_ana and sel_ana != "Todos":
     df_filtrado = df_filtrado[df_filtrado["analista"] == sel_ana]
-if sel_estado != "Todos" and "estado_carpeta" in df_filtrado.columns:
+if sel_estado and sel_estado != "Todos":
     df_filtrado = df_filtrado[df_filtrado["estado_carpeta"].str.lower() == sel_estado.lower()]
+if sel_nivel and sel_nivel != "Todos":
+    df_filtrado = df_filtrado[df_filtrado["nivel"] == sel_nivel]
 
 # ============ INICIO ============
 if pagina_actual == "Inicio":
@@ -299,36 +332,23 @@ if pagina_actual == "Inicio":
         st.image("assets/Logo Tablero.jpg", use_container_width=True)  # Imagen central (sí se mantiene)
 
 # ============ RESUMEN ============
-elif pagina_actual == "Resumen":
+if pagina_actual == "Resumen":
     st.title("📊 Resumen general")
-    # KPIs simples del conjunto filtrado
-    col1, col2, col3 = st.columns(3)
-    col1.metric("📁 Total carpetas", len(df_filtrado))
-    col2.metric("✅ Auditadas", (df_filtrado["estado_carpeta"].str.lower() == "auditada").sum() if "estado_carpeta" in df_filtrado.columns else 0)
-    sujetos = df_filtrado["analista"].nunique() if "analista" in df_filtrado.columns else 0
-    col3.metric("👥 Analistas activos", sujetos)
+    dias_habiles = business_days_since_start(date.today() - timedelta(days=1))
+    st.info(f"🗓️ Días hábiles considerados: **{dias_habiles}**")
 
-    # Gráficos sencillos por estado y por analista
-    if not df_filtrado.empty and "estado_carpeta" in df_filtrado.columns:
-        col4, col5 = st.columns(2)
-        with col4:
-            st.subheader("📈 Estado de carpetas")
-            fig_estado = px.histogram(
-                df_filtrado, x="estado_carpeta", color="estado_carpeta",
-                text_auto=True, color_discrete_sequence=COLOR_PALETTE
-            )
-            st.plotly_chart(fig_estado, use_container_width=True)
-        with col5:
-            if "analista" in df_filtrado.columns:
-                st.subheader("👤 Carpetas por analista")
-                fig_analista = px.histogram(
-                    df_filtrado, x="analista", color="estado_carpeta",
-                    barmode="group", color_discrete_sequence=COLOR_PALETTE
-                )
-                st.plotly_chart(fig_analista, use_container_width=True)
+    por_asignar = df_filtrado["estado_carpeta"].fillna("").eq("").sum()
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("📂 Total carpetas", len(df_filtrado))
+    col2.metric("✅ Auditadas", (df_filtrado["estado_carpeta"].str.lower() == "auditada").sum())
+    col3.metric("👤 Analistas activos", df_filtrado["analista"].nunique())
+    col4.metric("📥 Por asignar", por_asignar)
 
-    with st.expander("📄 Registros (primeros 100)"):
-        st.dataframe(df_filtrado.head(100))
+    st.plotly_chart(grafico_estado_con_meta(df_filtrado, "Resumen", 0), use_container_width=True)
+
+    avance = df_filtrado["estado_carpeta"].str.lower().isin(["auditada", "aprobada", "calificada"]).sum()
+    total = len(df_filtrado)
+    st.plotly_chart(grafico_avance_total(total, avance), use_container_width=True)
 
 # ============ MÓDULOS CON METAS Y ATRASOS ============
 def modulo_vista(nombre_modulo: str):
