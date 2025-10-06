@@ -263,7 +263,7 @@ def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
     # --- Porcentaje (un poco más arriba del número) ---
     fig.add_annotation(
         text=f"<b style='font-size:16px; color:#1F9924;'>{porcentaje:,.1f}%</b>".replace(",", "X").replace(".", ",").replace("X", "."),
-        x=0.5, y=0.48, showarrow=False,
+        x=0.5, y=0.3, showarrow=False,
         xanchor="center"
     )
 
@@ -271,7 +271,7 @@ def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
     total_formateado = f"{total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
     fig.add_annotation(
         text=f"Total: {total_formateado}",
-        x=0.5, y=-0.2, showarrow=False,
+        x=0.5, y=-0.1, showarrow=False,
         font=dict(size=13, color="#444", family="Arial"),
         xanchor="center"
     )
