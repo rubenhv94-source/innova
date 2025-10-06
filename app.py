@@ -42,7 +42,7 @@ st.markdown("""
         box-shadow: 0 8px 16px rgba(46,125,50,0.30) !important;
     }
     #analista-anchor + div [data-testid="stMetricValue"] {
-    font-size: 14px !important;
+    font-size: 10px !important;
     color: #1a1a1a !important;
     }
     #analista-anchor + div [data-testid="stMetricLabel"] {
