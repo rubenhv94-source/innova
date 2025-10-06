@@ -383,7 +383,7 @@ def modulo_vista(nombre_modulo: str):
         st.plotly_chart(fig2, use_container_width=True)
 
     c1, c2 = st.columns(2)
-    c1.metric("Supervisor", f"{sorted(df["supervisor"].unique()}")
+    c1.metric("Supervisor", f"{sorted(df['supervisor'].unique())}")
     
     tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
     st.subheader(f"Resumen {nombre_modulo}")
