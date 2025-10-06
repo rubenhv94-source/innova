@@ -212,27 +212,23 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, per_subject_meta:
     fig.update_layout(showlegend=False, xaxis_title="Cantidad", yaxis_title="")
     return fig
 
-import plotly.graph_objects as go
-import math
-
 def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
     """
-    Gauge compacto con formato europeo (punto como separador de miles),
-    línea de referencia de meta, porcentaje más abajo,
-    total fuera del gráfico y título visible.
+    Gauge semicircular compacto, con:
+    - Valor centrado dentro del arco
+    - Porcentaje dentro, un poco más arriba
+    - Total fuera del gauge
+    - Línea roja (meta)
+    - Separador de miles con punto fijo
     """
 
     # Calcular porcentaje
     porcentaje = (avance / total * 100) if total > 0 else 0
 
-    # --- Crear figura base ---
+    # Crear figura base
     fig = go.Figure(go.Indicator(
-        mode="gauge+number",
+        mode="gauge",
         value=avance,
-        number={
-            "font": {"size": 38, "color": "#1a1a1a"},
-            "valueformat": ",.0f"  # formato con separador de miles
-        },
         title={
             "text": "<b>Avance total de carpetas</b>",
             "font": {"size": 18, "color": "#1F9924"}
@@ -244,7 +240,7 @@ def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
                 "tickcolor": "#ccc",
                 "tickfont": {"size": 10}
             },
-            "bar": {"color": "#2e7d32"},
+            "bar": {"color": "#2e7d32", "thickness": 0.25},
             "bgcolor": "white",
             "steps": [
                 {"range": [0, total * 0.5], "color": "#e0f2f1"},
@@ -256,29 +252,37 @@ def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
         domain={'x': [0, 1], 'y': [0, 1]}
     ))
 
-    # --- Porcentaje dentro del gauge (ligeramente más abajo del centro) ---
+    # --- Valor central (separador de miles con punto) ---
+    valor_formateado = f"{avance:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
     fig.add_annotation(
-        text=f"{porcentaje:,.1f}%".replace(",", "X").replace(".", ",").replace("X", "."),
-        x=0.5, y=0.43, showarrow=False,  # antes 0.75, ahora más bajo
-        font=dict(size=16, color="#1F9924", family="Arial"),
+        text=f"<b style='font-size:36px; color:#000;'>{valor_formateado}</b>",
+        x=0.5, y=0.33, showarrow=False,
         xanchor="center"
     )
 
-    # --- Total debajo del gauge, fuera de la circunferencia ---
+    # --- Porcentaje (un poco más arriba del número) ---
     fig.add_annotation(
-        text=f"Total: {total:,.0f}".replace(",", "X").replace(".", ",").replace("X", "."),
-        x=0.5, y=-0.2, showarrow=False,
+        text=f"<b style='font-size:16px; color:#1F9924;'>{porcentaje:,.1f}%</b>".replace(",", "X").replace(".", ",").replace("X", "."),
+        x=0.5, y=0.48, showarrow=False,
+        xanchor="center"
+    )
+
+    # --- Total debajo del gauge ---
+    total_formateado = f"{total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    fig.add_annotation(
+        text=f"Total: {total_formateado}",
+        x=0.5, y=-0.20, showarrow=False,
         font=dict(size=13, color="#444", family="Arial"),
         xanchor="center"
     )
 
-    # --- Línea roja de referencia (meta esperada) ---
+    # --- Línea roja (meta esperada) ---
     if meta_ref and 0 < meta_ref < total:
-        theta = 180 * (meta_ref / total)  # posición de la meta (semicircular)
-        x0 = 0.5 - 0.4 * math.cos(math.radians(theta))
-        y0 = 0.5 + 0.4 * math.sin(math.radians(theta))
-        x1 = 0.5 - 0.47 * math.cos(math.radians(theta))
-        y1 = 0.5 + 0.47 * math.sin(math.radians(theta))
+        theta = 180 * (meta_ref / total)
+        x0 = 0.5 - 0.35 * math.cos(math.radians(theta))
+        y0 = 0.5 + 0.35 * math.sin(math.radians(theta))
+        x1 = 0.5 - 0.42 * math.cos(math.radians(theta))
+        y1 = 0.5 + 0.42 * math.sin(math.radians(theta))
 
         fig.add_shape(
             type="line",
