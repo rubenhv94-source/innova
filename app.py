@@ -212,9 +212,6 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, per_subject_meta:
     fig.update_layout(showlegend=False, xaxis_title="Cantidad", yaxis_title="")
     return fig
 
-import plotly.graph_objects as go
-import math
-
 def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
     """
     Gauge semicircular compacto con:
