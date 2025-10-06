@@ -303,7 +303,7 @@ if pagina_actual == "Inicio":
     with c2:
         st.empty()  # vacío en el centro
     with c3:
-        st.image("assets/Dian.png", use_container_width=True)
+        st.image("assets/Andina.png", use_container_width=True)
 
     st.markdown("<h1 style='text-align:center; font-weight:700;'>Seguimiento de Metas VA DIAN 2667</h1>", unsafe_allow_html=True)
 
@@ -323,7 +323,7 @@ if pagina_actual == "Inicio":
             st.query_params["pagina"] = "Equipos"
             st.rerun()
     with col_right:
-        st.image("assets/Logo Tablero.jpg", use_container_width=True)  # Imagen central (sí se mantiene)
+        st.markdown(\"\"\"\n<div style='display: flex; justify-content: center;'>\n    <img src='assets/Logo Tablero.jpg' style='max-width: 100%; height: auto;'>\n</div>\n\"\"\", unsafe_allow_html=True)
 
 # ============ RESUMEN ============
 if pagina_actual == "Resumen":
