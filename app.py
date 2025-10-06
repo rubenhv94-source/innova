@@ -41,13 +41,13 @@ st.markdown("""
         transform: translateY(-1px) !important;
         box-shadow: 0 8px 16px rgba(46,125,50,0.30) !important;
     }
-    .custom-analista [data-testid="stMetricValue"] {
-        font-size: 10px !important;
-        color: #1a1a1a !important;
+    div[data-testid="column"]:has(div[data-testid="stMetric"]) p {
+        font-size: 13px !important;
+        color: #555 !important;
     }
-    .custom-analista [data-testid="stMetricLabel"] {
-        font-size: 10px !important;
-        color: #666 !important;
+    div[data-testid="column"]:has(div[data-testid="stMetric"]) [data-testid="stMetricValue"] {
+        font-size: 14px !important;
+        color: #1a1a1a !important;
     }
 </style>
 """, unsafe_allow_html=True)
