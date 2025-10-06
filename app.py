@@ -322,7 +322,7 @@ if pagina_actual == "Inicio":
         if st.button("Equipos", key="btn_home_equipos"):
             st.query_params["pagina"] = "Equipos"
             st.rerun()
-    with col_center:
+    with center_col:
         st.image("assets/Logo Tablero.jpg", use_container_width=True)
         
 # ============ RESUMEN ============
