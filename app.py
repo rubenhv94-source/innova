@@ -385,11 +385,11 @@ def modulo_vista(nombre_modulo: str):
     supervisores_filtrados = sorted(df_filtrado["supervisor"].dropna().unique())
     
     if len(supervisores_filtrados) == 1:
-        supervisor_label = f"Supervisor: {supervisores_filtrados[0]}"
+        supervisor_label = supervisores_filtrados[0]
     elif len(supervisores_filtrados) > 1:
-        supervisor_label = "Supervisor: Varios"
+        supervisor_label = "Varios"
     else:
-        supervisor_label = "Supervisor: No disponible"
+        supervisor_label = "No disponible"
     
     c1.metric("Supervisor", value=supervisor_label)
     
