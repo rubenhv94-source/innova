@@ -42,11 +42,11 @@ st.markdown("""
         box-shadow: 0 8px 16px rgba(46,125,50,0.30) !important;
     }
     .custom-analista [data-testid="stMetricValue"] {
-        font-size: 14px !important;
+        font-size: 10px !important;
         color: #1a1a1a !important;
     }
     .custom-analista [data-testid="stMetricLabel"] {
-        font-size: 13px !important;
+        font-size: 10px !important;
         color: #666 !important;
     }
 </style>
