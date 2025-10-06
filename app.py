@@ -1,3 +1,52 @@
+# ============ MÓDULOS CON METAS Y ATRASOS ============
+def modulo_vista(nombre_modulo: str):
+    st.title(nombre_modulo)
+    dfm = prepara_df_modulo(df_filtrado, nombre_modulo)
+
+    dias_habiles = business_days_since_start(date.today() - timedelta(days=1))
+    meta_total, n_sujetos = meta_acumulada(nombre_modulo, dfm)
+    st.info(f"Equipo: **{n_sujetos:,}** — Días hábiles considerados: **{dias_habiles}**".replace(",", "."))
+
+    validos = estados_validos(nombre_modulo)
+    desarrolladas_total = (
+        dfm["estado_carpeta"].str.lower().isin(validos)
+    ).sum() if "estado_carpeta" in dfm.columns else 0
+    diferencia_total = desarrolladas_total - meta_total
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Total carpetas", f"{len(dfm):,}".replace(",", "."))
+    c2.metric("Desarrolladas", f"{desarrolladas_total:,}".replace(",", "."))
+    c3.metric("Meta a la fecha", f"{meta_total:,}".replace(",", "."))
+    c4.metric("Δ Diferencia", f"{diferencia_total:,}".replace(",", "."))
+
+    per_subject = 34 if nombre_modulo == "Supervisores" else 17
+    meta_individual = per_subject * dias_habiles
+
+    col_fig1, col_fig2 = st.columns(2)
+    with col_fig1:
+        fig1 = grafico_estado_con_meta(dfm, nombre_modulo, meta_total)
+        st.plotly_chart(fig1, use_container_width=True)
+    with col_fig2:
+        fig2 = grafico_categorias_barh(dfm, nombre_modulo, meta_individual)
+        st.plotly_chart(fig2, use_container_width=True)
+
+    tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
+    st.subheader("Resumen por sujeto")
+    st.dataframe(tabla, use_container_width=True)
+
+if pagina_actual == "Analistas":
+    modulo_vista("Analistas")
+elif pagina_actual == "Supervisores":
+    modulo_vista("Supervisores")
+elif pagina_actual == "Equipos":
+    modulo_vista("Equipos")
+
+
+
+
+
+
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -20,16 +69,10 @@ st.set_page_config(
 st.markdown("""
 <style>
     .stApp { background-color: #ffffff; padding: 16px; }
-    h1, h2, h3 { color: #2e7d32; }
-
-    /* Sidebar */
+    h1, h2, h3 { color: #2e7d32; text-align: center; }
     [data-testid="stSidebar"] { background-color: #e8f5e9; }
-
-    /* Animación global suave al cambiar de página */
     [data-testid="stAppViewContainer"] { animation: fadeIn 0.5s ease-in-out; }
     @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
-
-    /* Botones Inicio: estilo como la imagen (borde verde + sombra suave) */
     .stButton>button {
         background-color: #ffffff !important;
         color: #2e7d32 !important;
@@ -333,18 +376,18 @@ if pagina_actual == "Inicio":
 
 # ============ RESUMEN ============
 if pagina_actual == "Resumen":
-    st.title("📊 Resumen general")
+    st.title("Resumen general")
     dias_habiles = business_days_since_start(date.today() - timedelta(days=1))
-    st.info(f"🗓️ Días hábiles considerados: **{dias_habiles}**")
+    st.info(f"Días hábiles considerados: **{dias_habiles}**")
 
     por_asignar = df_filtrado["estado_carpeta"].fillna("").eq("").sum()
     equipo_va = df_filtrado["analista"].nunique() + df_filtrado["supervisor"].nunique()
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("📂 Total carpetas", f"{len(df_filtrado):,}".replace(",", "."))
-    col2.metric("✅ Auditadas", f"{(df_filtrado["estado_carpeta"].str.lower() == "auditada").sum():,}".replace(",", "."))
-    col3.metric("👥 Equipo VA", f"{equipo_va:,}".replace(",", "."))
-    col4.metric("📥 Por asignar", f"{por_asignar:,}".replace(",", "."))
+    col1.metric("Total carpetas", f"{len(df_filtrado):,}".replace(",", "."))
+    col2.metric("Auditadas", f"{(df_filtrado["estado_carpeta"].str.lower() == "auditada").sum():,}".replace(",", "."))
+    col3.metric("Equipo VA", f"{equipo_va:,}".replace(",", "."))
+    col4.metric("Por asignar", f"{por_asignar:,}".replace(",", "."))
 
     fig_estado = grafico_estado_con_meta(df_filtrado, "Resumen", 0)
     st.plotly_chart(fig_estado, use_container_width=True)
@@ -356,12 +399,12 @@ if pagina_actual == "Resumen":
 
 # ============ MÓDULOS CON METAS Y ATRASOS ============
 def modulo_vista(nombre_modulo: str):
-    st.title(f"🔎 {nombre_modulo}")
+    st.title(nombre_modulo)
     dfm = prepara_df_modulo(df_filtrado, nombre_modulo)
 
     dias_habiles = business_days_since_start(date.today() - timedelta(days=1))
     meta_total, n_sujetos = meta_acumulada(nombre_modulo, dfm)
-    st.info(f"\ud83d\udc65 Equipo: **{n_sujetos:,}** — \ud83d\uddd3\ufe0f Días hábiles considerados: **{dias_habiles}**".replace(",", "."))
+    st.info(f"Equipo: **{n_sujetos:,}** — Días hábiles considerados: **{dias_habiles}**".replace(",", "."))
 
     validos = estados_validos(nombre_modulo)
     desarrolladas_total = (
@@ -370,10 +413,10 @@ def modulo_vista(nombre_modulo: str):
     diferencia_total = desarrolladas_total - meta_total
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("📁 Total carpetas", f"{len(dfm):,}".replace(",", "."))
-    c2.metric("✅ Desarrolladas", f"{desarrolladas_total:,}".replace(",", "."))
-    c3.metric("🎯 Meta a la fecha", f"{meta_total:,}".replace(",", "."))
-    c4.metric("Δ Diferencia (Desarrolladas - Meta)", f"{diferencia_total:,}".replace(",", "."))
+    c1.metric("Total carpetas", f"{len(dfm):,}".replace(",", "."))
+    c2.metric("Desarrolladas", f"{desarrolladas_total:,}".replace(",", "."))
+    c3.metric("Meta a la fecha", f"{meta_total:,}".replace(",", "."))
+    c4.metric("Δ Diferencia", f"{diferencia_total:,}".replace(",", "."))
 
     per_subject = 34 if nombre_modulo == "Supervisores" else 17
     meta_individual = per_subject * dias_habiles
@@ -387,7 +430,7 @@ def modulo_vista(nombre_modulo: str):
         st.plotly_chart(fig2, use_container_width=True)
 
     tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
-    st.subheader("📋 Resumen por sujeto")
+    st.subheader("Resumen por sujeto")
     st.dataframe(tabla, use_container_width=True)
 
 if pagina_actual == "Analistas":
