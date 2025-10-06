@@ -205,10 +205,10 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, per_subject_meta:
         orientation="h",
         color="categoria",
         color_discrete_sequence=COLOR_PALETTE,
-        title="Cantidad de sujetos por categoría de atraso",
+        title="Cantidad por seguimiento individual",
         text_auto=True,
     )
-    fig.update_layout(showlegend=False, xaxis_title="Cantidad de sujetos", yaxis_title="")
+    fig.update_layout(showlegend=False, xaxis_title="Cantidad", yaxis_title="")
     return fig
 
 def grafico_avance_total(total: int, avance: int):
@@ -383,7 +383,7 @@ def modulo_vista(nombre_modulo: str):
         st.plotly_chart(fig2, use_container_width=True)
 
     tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
-    st.subheader("Resumen por sujeto")
+    st.subheader(f"Resumen {nombre_modulo}")
     st.dataframe(tabla, use_container_width=True)
 
 if pagina_actual == "Analistas":
