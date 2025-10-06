@@ -442,19 +442,18 @@ if pagina_actual == "Resumen":
     col3.metric("👨‍👧‍👧 Equipo VA", f"{equipo_va:,}".replace(",", "."))
     col4.metric("⚠️ Por asignar", f"{por_asignar:,}".replace(",", "."))
 
-    colR_fig1, colR_fig2 = st.columns(2)
 
-    with colR_fig1:
-        avance = df_filtrado["estado_carpeta"].str.lower().isin(["auditada"]).sum()
-        total = len(df_filtrado)
-        dfm = prepara_df_modulo(df_filtrado, "Supervisores")
-        meta_total, n_sujetos = meta_acumulada("Supervisores", dfm)
-        fig_gauge = grafico_avance_total(total, avance, meta_total)
-        st.plotly_chart(fig_gauge, use_container_width=True)
-    
-    with colR_fig2:
-        fig_estado = grafico_estado_con_meta(df_filtrado, "Resumen", 0)
-        st.plotly_chart(fig_estado, use_container_width=True)
+
+
+    avance = df_filtrado["estado_carpeta"].str.lower().isin(["auditada"]).sum()
+    total = len(df_filtrado)
+    dfm = prepara_df_modulo(df_filtrado, "Supervisores")
+    meta_total, n_sujetos = meta_acumulada("Supervisores", dfm)
+    fig_gauge = grafico_avance_total(total, avance, meta_total)
+    st.plotly_chart(fig_gauge, use_container_width=True)
+
+    fig_estado = grafico_estado_con_meta(df_filtrado, "Resumen", 0)
+    st.plotly_chart(fig_estado, use_container_width=True)
 
 # ============ MÓDULOS CON METAS Y ATRASOS ============
 def modulo_vista(nombre_modulo: str):
