@@ -49,7 +49,6 @@ st.markdown("""
         font-size: 13px !important;
         color: #666 !important;
     }
-)
 </style>
 """, unsafe_allow_html=True)
 
@@ -453,9 +452,7 @@ def modulo_vista(nombre_modulo: str):
     else:
         auditor_label = "No disponible"
 
-    st.markdown("""
-    <div class="custom-analista">
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="custom-analista">', unsafe_allow_html=True)
     
     cx1, cx2 = st.columns(2)
     if nombre_modulo == 'Analistas':
@@ -477,8 +474,8 @@ def modulo_vista(nombre_modulo: str):
         else:
             cx1.metric("Analista", value=analista_label_1)
         cx2.metric("Profesional", value=auditor_label)
-        
-    st.markdown("</div>", unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
     
     tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
     st.subheader(f"Resumen {nombre_modulo}")
