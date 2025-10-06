@@ -390,8 +390,9 @@ def modulo_vista(nombre_modulo: str):
         supervisor_label = "Varios"
     else:
         supervisor_label = "No disponible"
-    
-    c1.metric("Supervisor", value=supervisor_label)
+        
+    cx1, cx2 = st.columns(2)    
+    cx1.metric("Supervisor", value=supervisor_label)
     
     tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
     st.subheader(f"Resumen {nombre_modulo}")
