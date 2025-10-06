@@ -241,6 +241,7 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, per_subject_meta:
         color="categoria",
         color_discrete_sequence=COLOR_PALETTE,
         title="Cantidad por seguimiento individual",
+        title_font=dict(size=18, color="#1F9924", family="Arial"),
         text_auto=True,
     )
     fig.update_layout(showlegend=False, xaxis_title="Cantidad", yaxis_title="")
@@ -379,7 +380,7 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> p
     pivot["Categoria"] = pivot["Faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
 
     # --- Orden final de columnas ---
-    columnas_estado = ESTADOS_ORDEN  # Ya garantizadas arriba
+    columnas_estado = ESTADOS_ORDEN
     out = pivot[[col] + columnas_estado + ["Analizadas", "Meta", "Faltantes", "Categoria"]]
 
     # --- Ordenar por categoría ---
