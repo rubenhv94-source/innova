@@ -41,6 +41,14 @@ st.markdown("""
         transform: translateY(-1px) !important;
         box-shadow: 0 8px 16px rgba(46,125,50,0.30) !important;
     }
+    [data-testid="stMetricValue"] {
+        font-size: 14px !important;
+    }
+    [data-testid="stMetricLabel"] {
+        font-size: 13px !important;
+        color: #666;
+    }
+)
 </style>
 """, unsafe_allow_html=True)
 
@@ -423,7 +431,7 @@ def modulo_vista(nombre_modulo: str):
     elif len(analistas_filtrados) == 1:
         analista_label_1 = analistas_filtrados[0]
         analista_label_2 = ""
-    elif len(analistas_filtrados) >= 2:
+    elif len(analistas_filtrados) == 2:
         analista_label_1 = analistas_filtrados[0]
         analista_label_2 = analistas_filtrados[1]
     else:
