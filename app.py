@@ -41,14 +41,6 @@ st.markdown("""
         transform: translateY(-1px) !important;
         box-shadow: 0 8px 16px rgba(46,125,50,0.30) !important;
     }
-    #analista-anchor + div [data-testid="stMetricValue"] {
-    font-size: 10px !important;
-    color: #1a1a1a !important;
-    }
-    #analista-anchor + div [data-testid="stMetricLabel"] {
-        font-size: 13px !important;
-        color: #666 !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -452,32 +444,59 @@ def modulo_vista(nombre_modulo: str):
     else:
         auditor_label = "No disponible"
 
-    st.markdown('<div id="analista-anchor"></div>', unsafe_allow_html=True)
+    def custom_metric(label: str, value: str, color="#2e7d32"):
+        st.markdown(
+            f"""
+            <div style="
+                background-color: #ffffff;
+                border: 2px solid {color};
+                border-radius: 12px;
+                padding: 10px 8px;
+                text-align: center;
+                box-shadow: 0 4px 10px rgba(46,125,50,0.15);
+                transition: all 0.2s ease-in-out;
+                ">
+                <div style="font-size:13px; color:#666; font-weight:500;">{label}</div>
+                <div style="font-size:15px; font-weight:700; color:#1a1a1a; margin-top:2px;">{value}</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
     
-    with st.container():  # este es el contenedor que será estilizado por el CSS de arriba
+    with st.container():
         cx1, cx2 = st.columns(2)
     
         if nombre_modulo == 'Analistas':
-            cx1.metric("Supervisor", value=supervisor_label)
-            cx2.metric("Profesional", value=auditor_label)
+            with cx1:
+                custom_metric("Supervisor", supervisor_label)
+            with cx2:
+                custom_metric("Profesional", auditor_label)
     
         elif nombre_modulo == 'Supervisores':
             if analista_label_2:
                 cxa1, cxa2 = cx1.columns(2)
-                cxa1.metric("Analista 1", value=analista_label_1)
-                cxa2.metric("Analista 2", value=analista_label_2)
+                with cxa1:
+                    custom_metric("Analista 1", analista_label_1)
+                with cxa2:
+                    custom_metric("Analista 2", analista_label_2)
             else:
-                cx1.metric("Analista", value=analista_label_1)
-            cx2.metric("Profesional", value=auditor_label)
+                with cx1:
+                    custom_metric("Analista", analista_label_1)
+            with cx2:
+                custom_metric("Profesional", auditor_label)
     
         else:
             if analista_label_2:
                 cxa1, cxa2 = cx1.columns(2)
-                cxa1.metric("Analista 1", value=analista_label_1)
-                cxa2.metric("Analista 2", value=analista_label_2)
+                with cxa1:
+                    custom_metric("Analista 1", analista_label_1)
+                with cxa2:
+                    custom_metric("Analista 2", analista_label_2)
             else:
-                cx1.metric("Analista", value=analista_label_1)
-            cx2.metric("Profesional", value=auditor_label)
+                with cx1:
+                    custom_metric("Analista", analista_label_1)
+            with cx2:
+                custom_metric("Profesional", auditor_label)
     
     tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
     st.subheader(f"Resumen {nombre_modulo}")
