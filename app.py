@@ -417,15 +417,18 @@ def modulo_vista(nombre_modulo: str):
     supervisores_filtrados = sorted(df_filtrado["supervisor"].dropna().unique())
     auditores_filtrados = sorted(df_filtrado["auditor"].dropna().unique())
 
-    if len(supervisores_filtrados) == 1:
-        analista_label_1 = analistas_filtrados[0]
-        analista_label_2 = analistas_filtrados[1]
-    elif len(supervisores_filtrados) > 1:
-        analista_label_1 = "Varios"
-        analista_label_2 = "Varios"
-    else:
+    if len(analistas_filtrados) == 0:
         analista_label_1 = "No disponible"
         analista_label_2 = "No disponible"
+    elif len(analistas_filtrados) == 1:
+        analista_label_1 = analistas_filtrados[0]
+        analista_label_2 = ""
+    elif len(analistas_filtrados) >= 2:
+        analista_label_1 = analistas_filtrados[0]
+        analista_label_2 = analistas_filtrados[1]
+    else:
+        analista_label_1 = "Varios"
+        analista_label_2 = "Varios"
     
     if len(supervisores_filtrados) == 1:
         supervisor_label = supervisores_filtrados[0]
@@ -446,12 +449,20 @@ def modulo_vista(nombre_modulo: str):
         cx1.metric("Supervisor", value=supervisor_label)
         cx2.metric("Profesional", value=auditor_label)
     elif nombre_modulo == 'Supervisores':
-        cx1.metric("Analistas", value=analista_label_1)
-        #cx1.metric(value=analista_label_2)
+        if analista_label_2:
+            cxa1, cxa2 = cx1.columns(2)
+            cxa1.metric("Analista 1", value=analista_label_1)
+            cxa2.metric("Analista 2", value=analista_label_2)
+        else:
+            cx1.metric("Analista", value=analista_label_1)
         cx2.metric("Profesional", value=auditor_label)
     else:
-        cx1.metric("Analistas", value=analista_label_1)
-        #cx1.metric(value=analista_label_2)
+        if analista_label_2:
+            cxa1, cxa2 = cx1.columns(2)
+            cxa1.metric("Analista 1", value=analista_label_1)
+            cxa2.metric("Analista 2", value=analista_label_2)
+        else:
+            cx1.metric("Analista", value=analista_label_1)
         cx2.metric("Profesional", value=auditor_label)
         
     tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
