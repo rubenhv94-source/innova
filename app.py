@@ -383,17 +383,15 @@ def modulo_vista(nombre_modulo: str):
         st.plotly_chart(fig2, use_container_width=True)
 
     c1, c2 = st.columns(2)
-    sel_prof = sel_sup = sel_ana = sel_estado = sel_nivel = None
-    
     if "supervisor" in df.columns:
         opciones_sup = ["Todos"] + sorted(df["supervisor"].dropna().unique())
+        sel_sup = st.selectbox("🧑‍🏫 Supervisor", opciones_sup)
     
-        supervisores_filtrados = [s for s in opciones_sup if s != "Todos"]
-    
-        if len(supervisores_filtrados) == 1:
-            supervisor_label = f"Supervisor: {supervisores_filtrados[0]}"
-        else:
+        # Mostrar tarjeta según selección
+        if sel_sup == "Todos":
             supervisor_label = "Supervisor: Varios"
+        else:
+            supervisor_label = f"Supervisor: {sel_sup}"
     
         c1.metric(label="", value=supervisor_label)
     
