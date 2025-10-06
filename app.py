@@ -382,7 +382,7 @@ def modulo_vista(nombre_modulo: str):
         fig2 = grafico_categorias_barh(dfm, nombre_modulo, meta_individual)
         st.plotly_chart(fig2, use_container_width=True)
 
-    c1, c2 = st.columns(2)
+    c1, c2, c3, c4 = st.columns(4)
 
     supervisores_filtrados = sorted(df_filtrado["supervisor"].dropna().unique())
     
