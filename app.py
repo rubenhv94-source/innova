@@ -333,60 +333,58 @@ if pagina_actual == "Inicio":
 
 # ============ RESUMEN ============
 if pagina_actual == "Resumen":
-    st.title("📊 Resumen general")
+    st.markdown("<h1>\ud83d\udcca Resumen general</h1>", unsafe_allow_html=True)
     dias_habiles = business_days_since_start(date.today() - timedelta(days=1))
     st.info(f"🗓️ Días hábiles considerados: **{dias_habiles}**")
 
     por_asignar = df_filtrado["estado_carpeta"].fillna("").eq("").sum()
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("📂 Total carpetas", len(df_filtrado))
-    col2.metric("✅ Auditadas", (df_filtrado["estado_carpeta"].str.lower() == "auditada").sum())
-    col3.metric("👤 Analistas activos", df_filtrado["analista"].nunique())
-    col4.metric("📥 Por asignar", por_asignar)
+    equipo_va = df_filtrado["analista"].nunique() + df_filtrado["supervisor"].nunique()
 
-    st.plotly_chart(grafico_estado_con_meta(df_filtrado, "Resumen", 0), use_container_width=True)
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("📂 Total carpetas", f"{len(df_filtrado):,}".replace(",", "."))
+    col2.metric("✅ Auditadas", f"{(df_filtrado["estado_carpeta"].str.lower() == "auditada").sum():,}".replace(",", "."))
+    col3.metric("👥 Equipo VA", f"{equipo_va:,}".replace(",", "."))
+    col4.metric("📥 Por asignar", f"{por_asignar:,}".replace(",", "."))
+
+    fig_estado = grafico_estado_con_meta(df_filtrado, "Resumen", 0)
+    st.plotly_chart(fig_estado, use_container_width=True)
 
     avance = df_filtrado["estado_carpeta"].str.lower().isin(["auditada", "aprobada", "calificada"]).sum()
     total = len(df_filtrado)
-    st.plotly_chart(grafico_avance_total(total, avance), use_container_width=True)
+    fig_gauge = grafico_avance_total(total, avance)
+    st.plotly_chart(fig_gauge, use_container_width=True)
 
 # ============ MÓDULOS CON METAS Y ATRASOS ============
 def modulo_vista(nombre_modulo: str):
-    st.title(f"🔎 {nombre_modulo}")
+    st.markdown(f"<h1>\ud83d\udd0e {nombre_modulo}</h1>", unsafe_allow_html=True)
     dfm = prepara_df_modulo(df_filtrado, nombre_modulo)
 
     dias_habiles = business_days_since_start(date.today() - timedelta(days=1))
-
-    # Calcular meta acumulada (y contar sujetos únicos)
     meta_total, n_sujetos = meta_acumulada(nombre_modulo, dfm)
+    st.info(f"\ud83d\udc65 Equipo: **{n_sujetos:,}** — \ud83d\uddd3\ufe0f Días hábiles considerados: **{dias_habiles}**".replace(",", "."))
 
-    # Mostrar número de sujetos únicos
-    st.info(f"👥 Equipo: **{n_sujetos}** — 🗓️ Días hábiles considerados: **{dias_habiles}**")
-
-    # Desarrolladas totales del módulo (para KPI)
     validos = estados_validos(nombre_modulo)
     desarrolladas_total = (
         dfm["estado_carpeta"].str.lower().isin(validos)
     ).sum() if "estado_carpeta" in dfm.columns else 0
     diferencia_total = desarrolladas_total - meta_total
 
-    # KPIs
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("📁 Total carpetas", len(dfm))
-    c2.metric("✅ Desarrolladas", desarrolladas_total)
-    c3.metric("🎯 Meta a la fecha", meta_total)
-    c4.metric("Δ Diferencia (Desarrolladas - Meta)", diferencia_total)
+    c1.metric("📁 Total carpetas", f"{len(dfm):,}".replace(",", "."))
+    c2.metric("✅ Desarrolladas", f"{desarrolladas_total:,}".replace(",", "."))
+    c3.metric("🎯 Meta a la fecha", f"{meta_total:,}".replace(",", "."))
+    c4.metric("Δ Diferencia (Desarrolladas - Meta)", f"{diferencia_total:,}".replace(",", "."))
 
-    # Cálculo de meta individual
     per_subject = 34 if nombre_modulo == "Supervisores" else 17
-    dias_habiles = business_days_since_start(date.today() - timedelta(days=1))
     meta_individual = per_subject * dias_habiles
 
-    fig1 = grafico_estado_con_meta(dfm, nombre_modulo, meta_total)
-    st.plotly_chart(fig1, use_container_width=True)
-
-    fig2 = grafico_categorias_barh(dfm, nombre_modulo, meta_individual)
-    st.plotly_chart(fig2, use_container_width=True)
+    col_fig1, col_fig2 = st.columns(2)
+    with col_fig1:
+        fig1 = grafico_estado_con_meta(dfm, nombre_modulo, meta_total)
+        st.plotly_chart(fig1, use_container_width=True)
+    with col_fig2:
+        fig2 = grafico_categorias_barh(dfm, nombre_modulo, meta_individual)
+        st.plotly_chart(fig2, use_container_width=True)
 
     tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
     st.subheader("📋 Resumen por sujeto")
@@ -394,9 +392,7 @@ def modulo_vista(nombre_modulo: str):
 
 if pagina_actual == "Analistas":
     modulo_vista("Analistas")
-
 elif pagina_actual == "Supervisores":
     modulo_vista("Supervisores")
-
 elif pagina_actual == "Equipos":
     modulo_vista("Equipos")
