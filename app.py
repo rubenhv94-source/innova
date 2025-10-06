@@ -392,7 +392,7 @@ if pagina_actual == "Resumen":
     colR_fig1, colR_fig2 = st.columns(2)
 
     with colR_fig1:
-        avance = df_filtrado["estado_carpeta"].str.lower().isin(["auditada"])
+        avance = df_filtrado["estado_carpeta"].str.lower().isin(["auditada"]).sum()
         total = len(df_filtrado)
         fig_gauge = grafico_avance_total(total, avance)
         st.plotly_chart(fig_gauge, use_container_width=True)
