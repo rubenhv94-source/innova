@@ -397,10 +397,10 @@ def modulo_vista(nombre_modulo: str):
     diferencia_total = desarrolladas_total - meta_total
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Total carpetas", f"{len(dfm):,}".replace(",", "."))
-    c2.metric("Desarrolladas", f"{desarrolladas_total:,}".replace(",", "."))
-    c3.metric("Meta a la fecha", f"{meta_total:,}".replace(",", "."))
-    c4.metric("Δ Diferencia", f"{diferencia_total:,}".replace(",", "."))
+    c1.metric("📂 Total carpetas", f"{len(dfm):,}".replace(",", "."))
+    c2.metric("✔️ Desarrolladas", f"{desarrolladas_total:,}".replace(",", "."))
+    c3.metric("🎯 Meta a la fecha", f"{meta_total:,}".replace(",", "."))
+    c4.metric("⚠️ Diferencia", f"{diferencia_total:,}".replace(",", "."))
 
     per_subject = 34 if nombre_modulo == "Supervisores" else 17
     meta_individual = per_subject * dias_habiles
