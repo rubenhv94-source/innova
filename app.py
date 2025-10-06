@@ -240,11 +240,11 @@ def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
                 "tickcolor": "#ccc",
                 "tickfont": {"size": 10}
             },
-            "bar": {"color": "#2e7d32", "thickness": 0.25},
+            "bar": {"color": "#2e7d32", "thickness": 0.5},
             "bgcolor": "white",
             "steps": [
                 {"range": [0, total * 0.5], "color": "#e0f2f1"},
-                {"range": [total * 0.5, total], "color": "#a5d6a7"}
+                {"range": [total * 0.5, total], "color": "#e0f2f1"}
             ],
             "borderwidth": 2,
             "bordercolor": "#cccccc"
@@ -256,7 +256,7 @@ def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
     valor_formateado = f"{avance:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
     fig.add_annotation(
         text=f"<b style='font-size:36px; color:#000;'>{valor_formateado}</b>",
-        x=0.5, y=0.33, showarrow=False,
+        x=0.5, y=0.5, showarrow=False,
         xanchor="center"
     )
 
