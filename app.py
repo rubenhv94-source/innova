@@ -213,19 +213,36 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, per_subject_meta:
 
 def grafico_avance_total(total: int, avance: int):
     fig = go.Figure(go.Indicator(
-        mode = "gauge+number",
-        value = avance,
-        title = {"text": "Avance total de carpetas"},
-        gauge = {
+        mode="gauge+number",
+        value=avance,
+        number={
+            "font": {"size": 48, "color": "black"},
+            "valueformat": ",.0f"  # formato con separador de miles (punto o coma según configuración)
+        },
+        title={
+            "text": "Avance total de carpetas",
+            "font": {"size": 18, "color": "#1F9924"}
+        },
+        gauge={
             "axis": {"range": [0, total]},
-            "bar": {"color": "green"},
-            "steps" : [
-                {"range": [0, total*0.5], "color": "#e0f2f1"},
-                {"range": [total*0.5, total], "color": "#a5d6a7"}
+            "bar": {"color": "#2e7d32"},  # verde consistente con el dashboard
+            "steps": [
+                {"range": [0, total * 0.5], "color": "#e0f2f1"},
+                {"range": [total * 0.5, total], "color": "#a5d6a7"}
             ],
+            "borderwidth": 2,
+            "bordercolor": "#cccccc"
         },
         domain={'x': [0, 1], 'y': [0, 1]}
     ))
+
+    # Centrar título y número
+    fig.update_layout(
+        margin=dict(l=10, r=10, t=40, b=10),
+        paper_bgcolor="#ffffff",
+        font={"family": "Arial", "color": "#1a1a1a"},
+    )
+
     return fig
 
 def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> pd.DataFrame:
