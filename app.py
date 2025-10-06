@@ -184,7 +184,10 @@ def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, total_meta: int):
         color="estado_carpeta",
         color_discrete_sequence=COLOR_PALETTE,
         text="label",
-        title=f"Distribución por estado — Meta total a la fecha: {total_meta:,}".replace(",", "."),
+        title={
+            "text": "<b>Distribución por estado</b>",
+            "font": {"size": 18, "color": "#1F9924"}
+        },
     )
 
     # --- Línea de meta (azul discontinua sin puntos) ---
@@ -482,7 +485,7 @@ if pagina_actual == "Resumen":
     col1.metric("📂 Total carpetas", f"{len(df_filtrado):,}".replace(",", "."))
     col2.metric("✔️ Auditadas", f"{(df_filtrado['estado_carpeta'].str.lower() == 'auditada').sum():,}".replace(",", "."))
     col3.metric("👨‍👧‍👧 Equipo VA", f"{equipo_va:,}".replace(",", "."))
-    col4.metric("⚠️ Por asignar", f"{por_asignar:,}".replace(",", "."))
+    col4.metric("📌 Por asignar", f"{por_asignar:,}".replace(",", "."))
 
     avance = df_filtrado["estado_carpeta"].str.lower().isin(["auditada"]).sum()
     total = len(df_filtrado)
