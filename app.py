@@ -301,11 +301,11 @@ if pagina_actual == "Inicio":
     with c1:
         st.image("assets/Logp GP FUAA.png", use_container_width=True)
     with c2:
-        st.empty()  # vacío en el centro
+        st.empty()
     with c3:
-        st.image("assets/Andina.png", use_container_width=True)
+        st.image("assets/Andina.png", width=200)
 
-    st.markdown("<h1 style='text-align:center; font-weight:700;'>Seguimiento de Metas VA DIAN 2667</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align:center; font-weight:700; color:#1F9924'>Seguimiento de Metas VA DIAN 2667</h1>", unsafe_allow_html=True)
 
     col_left, col_center, col_right = st.columns([1, 1, 1])
     with col_left:
