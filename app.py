@@ -322,9 +322,9 @@ if pagina_actual == "Inicio":
         if st.button("Equipos", key="btn_home_equipos"):
             st.query_params["pagina"] = "Equipos"
             st.rerun()
-    with col_right:
-        st.markdown(\"\"\"\n<div style='display: flex; justify-content: center;'>\n    <img src='assets/Logo Tablero.jpg' style='max-width: 100%; height: auto;'>\n</div>\n\"\"\", unsafe_allow_html=True)
-
+    with col_center:
+        st.image("assets/Logo Tablero.jpg", use_container_width=True)
+        
 # ============ RESUMEN ============
 if pagina_actual == "Resumen":
     st.title("Resumen general")
