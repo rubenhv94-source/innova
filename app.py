@@ -446,10 +446,12 @@ def modulo_vista(nombre_modulo: str):
         cx1.metric("Supervisor", value=supervisor_label)
         cx2.metric("Profesional", value=auditor_label)
     elif nombre_modulo == 'Supervisores':
-        cx1.metric("Analistas", value=analista_label_1 + " " + value=analista_label_2)
+        cx1.metric("Analistas", value=analista_label_1)
+        cx1.metric(value=analista_label_2)
         cx2.metric("Profesional", value=auditor_label)
     else:
-        cx1.metric("Analistas", value=analista_label_1 + " " + value=analista_label_2)
+        cx1.metric("Analistas", value=analista_label_1)
+        cx1.metric(value=analista_label_2)
         cx2.metric("Profesional", value=auditor_label)
         
     tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
