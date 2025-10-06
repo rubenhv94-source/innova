@@ -383,6 +383,7 @@ def modulo_vista(nombre_modulo: str):
         st.plotly_chart(fig2, use_container_width=True)
 
     supervisores_filtrados = sorted(df_filtrado["supervisor"].dropna().unique())
+    auditores_filtrados = sorted(df_filtrado["auditor"].dropna().unique())
     
     if len(supervisores_filtrados) == 1:
         supervisor_label = supervisores_filtrados[0]
@@ -390,9 +391,17 @@ def modulo_vista(nombre_modulo: str):
         supervisor_label = "Varios"
     else:
         supervisor_label = "No disponible"
+
+    if len(auditores_filtrados) == 1:
+        auditor_label = auditores_filtrados[0]
+    elif len(auditores_filtrados) > 1:
+        auditor_label = "Varios"
+    else:
+        auditor_label = "No disponible"
         
     cx1, cx2 = st.columns(2)    
     cx1.metric("Supervisor", value=supervisor_label)
+    cx2.metric("Auditor", value=auditor_label)
     
     tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
     st.subheader(f"Resumen {nombre_modulo}")
