@@ -234,9 +234,9 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> p
     if df_mod.empty or col not in df_mod.columns:
         return pd.DataFrame(columns=["Categoria", col.capitalize(), "Analizadas", "Meta", "Faltantes"])
 
-    if modulo.lower() == "analista":
+    if modulo.lower() == "analistas":
         estados_efectivos = {"auditada", "aprobada", "calificada"}
-    elif modulo.lower() == "supervisor":
+    elif modulo.lower() == "supervisores":
         estados_efectivos = {"auditada", "aprobada"}
     else:
         estados_efectivos = set()
