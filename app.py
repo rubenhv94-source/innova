@@ -184,10 +184,7 @@ def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, total_meta: int):
         color="estado_carpeta",
         color_discrete_sequence=COLOR_PALETTE,
         text="label",
-        title={
-            "text": "<b>Distribución por estado</b>",
-            "font": {"size": 18, "color": "#1F9924"}
-        },
+        title="<b>Distribución por estado</b>",
     )
 
     # --- Línea de meta (azul discontinua sin puntos) ---
@@ -217,6 +214,7 @@ def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, total_meta: int):
         font=dict(family="Arial", size=12),
         plot_bgcolor="white",
         margin=dict(l=20, r=20, t=80, b=40),
+        title_font=dict(size=18, color="#1F9924", family="Arial"),
     )
 
     return fig
