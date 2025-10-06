@@ -442,7 +442,8 @@ if pagina_actual == "Resumen":
     with colR_fig1:
         avance = df_filtrado["estado_carpeta"].str.lower().isin(["auditada"]).sum()
         total = len(df_filtrado)
-        meta_total, n_sujetos = meta_acumulada(nombre_modulo, dfm)
+        dfm = prepara_df_modulo(df_filtrado, "Supervisores")
+        meta_total, n_sujetos = meta_acumulada("Supervisores", dfm)
         fig_gauge = grafico_avance_total(total, avance, meta_total)
         st.plotly_chart(fig_gauge, use_container_width=True)
     
@@ -452,7 +453,6 @@ if pagina_actual == "Resumen":
 
 # ============ MÓDULOS CON METAS Y ATRASOS ============
 def modulo_vista(nombre_modulo: str):
-    #st.title(nombre_modulo)
     st.markdown(f"<h1 style='color:#1F9924;'>{nombre_modulo}</h1>", unsafe_allow_html=True)
     dfm = prepara_df_modulo(df_filtrado, nombre_modulo)
 
