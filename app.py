@@ -20,7 +20,7 @@ st.set_page_config(
 st.markdown("""
 <style>
     .stApp { background-color: #ffffff; padding: 16px; }
-    h1, h2, h3 { color: #2e7d32; text-align: center; }
+    h1, h2, h3 { color: #1F9924; text-align: center; }
     [data-testid="stSidebar"] { background-color: #e8f5e9; }
     [data-testid="stAppViewContainer"] { animation: fadeIn 0.5s ease-in-out; }
     @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
@@ -305,7 +305,7 @@ if pagina_actual == "Inicio":
     with c3:
         st.image("assets/Dian.png", use_container_width=True)
 
-    st.markdown("<h1 style='text-align:center; font-weight:700;'>Seguimiento Metas</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align:center; font-weight:700;'>Seguimiento de Metas VA DIAN 2667</h1>", unsafe_allow_html=True)
 
     col_left, col_right = st.columns([1, 1])
     with col_left:
