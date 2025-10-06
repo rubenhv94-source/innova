@@ -157,16 +157,26 @@ def clasifica_categoria(atraso: int, modulo: str) -> str:
             return "Atraso alto"
 
 def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, total_meta: int):
+    # --- Conteo por estado ---
     conteo = (
-        df_mod["estado_carpeta"].fillna("").str.lower().map(ESTADOS_RENOM).value_counts()
-        .reindex([ESTADOS_RENOM.get(e, e) for e in ["asignada", "devuelta", "calificada", "aprobada", "auditada"] + ["Por asignar"]], fill_value=0)
+        df_mod["estado_carpeta"]
+        .fillna("")
+        .str.lower()
+        .map(ESTADOS_RENOM)
+        .value_counts()
+        .reindex(
+            [ESTADOS_RENOM.get(e, e) for e in ["asignada", "devuelta", "calificada", "aprobada", "auditada"] + ["Por asignar"]],
+            fill_value=0
+        )
         .reset_index()
     )
+
     conteo.columns = ["estado_carpeta", "cantidad"]
     total = conteo["cantidad"].sum()
     conteo["porcentaje"] = (conteo["cantidad"] / total * 100).round(1)
     conteo["label"] = conteo["cantidad"].astype(str) + " (" + conteo["porcentaje"].astype(str) + "%)"
 
+    # --- Gráfico de barras ---
     fig = px.bar(
         conteo,
         x="estado_carpeta",
@@ -176,13 +186,36 @@ def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, total_meta: int):
         text="label",
         title=f"Distribución por estado — Meta total a la fecha: {total_meta:,}".replace(",", "."),
     )
+
+    # --- Línea de meta (azul discontinua sin puntos) ---
     fig.add_scatter(
         x=conteo["estado_carpeta"],
         y=[total_meta] * len(conteo),
-        mode="lines+markers",
+        mode="lines",
         name="Meta acumulada",
+        line=dict(color="#007BFF", width=2, dash="dash"),
     )
-    fig.update_layout(showlegend=False, xaxis_title="", yaxis_title="Cantidad")
+
+    # --- Texto fijo de la meta ---
+    fig.add_annotation(
+        text=f"<b>Meta: {total_meta:,.0f}</b>".replace(",", "X").replace(".", ",").replace("X", "."),
+        xref="paper", yref="paper",
+        x=0.98, y=1.05,  # esquina superior derecha
+        showarrow=False,
+        font=dict(size=13, color="#007BFF", family="Arial"),
+        align="right",
+    )
+
+    # --- Ajustes visuales ---
+    fig.update_layout(
+        showlegend=False,
+        xaxis_title="",
+        yaxis_title="Cantidad",
+        font=dict(family="Arial", size=12),
+        plot_bgcolor="white",
+        margin=dict(l=20, r=20, t=80, b=40),
+    )
+
     return fig
 
 def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int):
