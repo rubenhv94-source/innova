@@ -670,20 +670,35 @@ def modulo_vista(nombre_modulo: str):
     else:
         st.warning("No existe columna 'auditor' en los datos.")
 
-    # b) Barras por estado para cada EQUIPO (ordenado y segmentado)
+    # b) Barras por estado para cada EQUIPO (vista dinámica por Supervisor / Analistas)
     if {"EQUIPO", "estado_carpeta"}.issubset(dfm.columns):
+        st.subheader("📊 Estados por EQUIPO")
+        vista_opcion = st.selectbox(
+            "Ver agrupación por:",
+            ["Supervisor", "Analistas"],
+            key="vista_estados_equipos"
+        )
+    
         tmp = dfm.copy()
         tmp["estado_carpeta"] = tmp["estado_carpeta"].str.lower().fillna("")
-        tmp = tmp[tmp["estado_carpeta"] != ""]
-        tmp = tmp[tmp["estado_carpeta"] != "por asignar"]
+        tmp = tmp[~tmp["estado_carpeta"].isin(["", "por asignar"])]
     
-        # Asegurar conversión numérica de EQUIPO para ordenar correctamente
+        # Asegurar orden numérico de los equipos
         tmp["EQUIPO_NUM"] = pd.to_numeric(tmp["EQUIPO"], errors="coerce")
         tmp = tmp.dropna(subset=["EQUIPO_NUM"])
         tmp["EQUIPO_NUM"] = tmp["EQUIPO_NUM"].astype(int)
     
+        # Preparar vista seleccionada
+        if vista_opcion == "Supervisor":
+            tmp["grupo"] = tmp["supervisor"].fillna("Sin supervisor")
+        else:
+            # Construir columnas A1 y A2 (solo para analistas por equipo)
+            tmp["grupo"] = tmp.groupby("EQUIPO_NUM")["analista"].transform(
+                lambda x: ["A1" if i == 0 else "A2" for i in range(len(x))]
+            )
+    
         grp = (
-            tmp.groupby(["EQUIPO_NUM", "estado_carpeta", "supervisor", "analista"])
+            tmp.groupby(["EQUIPO_NUM", "grupo", "estado_carpeta"])
             .size()
             .reset_index(name="cantidad")
         )
@@ -692,29 +707,30 @@ def modulo_vista(nombre_modulo: str):
         estado_cat = [ESTADOS_RENOM.get(e, e) for e in ESTADOS_ORDEN]
         grp["estado_label"] = pd.Categorical(grp["estado_label"], categories=estado_cat, ordered=True)
     
-        # Crear gráfico segmentado en columnas (por supervisor y analistas)
+        # Gráfico de barras apiladas agrupadas
         fig_bar = px.bar(
             grp,
             x="EQUIPO_NUM",
             y="cantidad",
             color="estado_label",
-            facet_col="supervisor",
-            facet_col_wrap=2,
+            barmode="stack",
+            facet_col="grupo",
             category_orders={"estado_label": estado_cat},
             color_discrete_sequence=COLOR_PALETTE,
-            title="<b>Estados por EQUIPO — Segmentado por Supervisor</b>",
-            barmode="stack",
+            title=f"<b>Estados por EQUIPO — Vista: {vista_opcion}</b>",
         )
     
+        # Ajustes visuales
         fig_bar.update_layout(
-            xaxis_title="EQUIPO",
-            yaxis_title="Cantidad",
             font=dict(family="Arial", size=12),
             title_font=dict(size=18, color="#1F9924", family="Arial"),
             plot_bgcolor="white",
             margin=dict(l=20, r=20, t=60, b=60),
-            legend_title_text="Estado"
+            legend_title_text="Estado",
         )
+        fig_bar.update_xaxes(title="EQUIPO")
+        fig_bar.update_yaxes(title="Cantidad")
+    
         st.plotly_chart(fig_bar, use_container_width=True)
     else:
         st.warning("No hay datos válidos de EQUIPO/estado para graficar.")
