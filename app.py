@@ -600,9 +600,9 @@ def modulo_vista(nombre_modulo: str):
         )
     
     with st.container():
-        cx1, cx2, cx3 = st.columns(3)
-    
+        
         if nombre_modulo == 'Analistas':
+            cx1, cx2, cx3 = st.columns(3)
             with cx1:
                 custom_metric("💯 Equipo", equipo_label)
             with cx2:
@@ -610,38 +610,26 @@ def modulo_vista(nombre_modulo: str):
             with cx3:
                 custom_metric("👩‍💼 Profesional", auditor_label)
     
-        elif nombre_modulo == 'Supervisores':           
-            if analista_label_2:
-                cxa1, cxa2, cxa3 = cx2.columns(3)
-                with cxa1:
-                    custom_metric("💯 Equipo", equipo_label) 
-                with cxa2:
-                    custom_metric("👨‍💻 Analista2", analista_label_2)
-                with cxa3:
-                    custom_metric("👨‍💻 Analista2", analista_label_2)                    
-            else:
-                with cx1:
-                    custom_metric("💯 Equipo", equipo_label)                
-                with cx2:
-                    custom_metric("👨‍💻 Analista", analista_label_1)                    
+        elif nombre_modulo == 'Supervisores':
+            cx1, cx2, cx3, cx4 = st.columns(4)
+            with cx1:
+                custom_metric("💯 Equipo", equipo_label) 
+            with cx2:
+                custom_metric("👨‍💻 Analista1", analista_label_1)
             with cx3:
-                custom_metric("👩‍💼 Profesional", auditor_label)
+                custom_metric("👨‍💻 Analista2", analista_label_2)
+            with cx4:
+                custom_metric("👩‍💼 Profesional", auditor_label)                    
       
         else:
-            if analista_label_2:
-                cxa1, cxa2, cxa3 = cx2.columns(3)
-                with cxa1:
-                    custom_metric("💯 Equipo", equipo_label) 
-                with cxa2:
-                    custom_metric("👨‍💻 Analista2", analista_label_2)
-                with cxa3:
-                    custom_metric("👨‍💻 Analista2", analista_label_2)                    
-            else:
-                with cx1:
-                    custom_metric("💯 Equipo", equipo_label)                
-                with cx2:
-                    custom_metric("👨‍💻 Analista", analista_label_1)                    
+            cx1, cx2, cx3, cx4 = st.columns(4)
+            with cx1:
+                custom_metric("💯 Equipo", equipo_label) 
+            with cx2:
+                custom_metric("👨‍💻 Analista1", analista_label_1)
             with cx3:
+                custom_metric("👨‍💻 Analista2", analista_label_2)
+            with cx4:
                 custom_metric("🕵️‍♀️ Supervisor", supervisor_label)
     
     tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
