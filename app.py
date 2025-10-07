@@ -113,7 +113,9 @@ def meta_acumulada(modulo: str, df_mod: pd.DataFrame, today: date | None = None)
 def estados_validos(modulo: str) -> list[str]:
     if modulo == "Analistas":
         return ["auditada", "aprobada", "calificada"]
-    return ["auditada", "aprobada"]
+    if modulo == "Supervisores":
+        return ["auditada", "aprobada"]        
+    return ["auditada"]
 
 def sujetos_col(modulo: str) -> str:
     return {"Analistas": "analista", "Supervisores": "supervisor", "Equipos": "auditor"}[modulo]
