@@ -692,10 +692,20 @@ def modulo_vista(nombre_modulo: str):
         if vista_opcion == "Supervisor":
             tmp["rol"] = "S"
         else:
-            # Para cada equipo, asignar A1 / A2 (sin mostrar nombres reales)
-            tmp["rol"] = tmp.groupby("EQUIPO_NUM")["analista"].transform(
-                lambda x: [f"A{i+1}" if i < 2 else f"A{i+1}" for i in range(len(x))]
+            # Determinar A1 y A2 correctamente por analista dentro de cada equipo
+            analistas_orden = (
+                tmp[["EQUIPO_NUM", "analista"]]
+                .drop_duplicates()
+                .groupby("EQUIPO_NUM")["analista"]
+                .apply(lambda x: dict(zip(x, [f"A{i+1}" for i in range(len(x))])))
+                .to_dict()
             )
+        
+            def asignar_rol(row):
+                mapa = analistas_orden.get(row["EQUIPO_NUM"], {})
+                return mapa.get(row["analista"], "A1")
+        
+            tmp["rol"] = tmp.apply(asignar_rol, axis=1)
     
         # --- Combinar EQUIPO + rol para eje X (ejemplo: "1 A1", "1 A2") ---
         tmp["equipo_rol"] = tmp["EQUIPO_NUM"].astype(str) + " " + tmp["rol"]
