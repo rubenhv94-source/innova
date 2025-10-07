@@ -116,7 +116,7 @@ def estados_validos(modulo: str) -> list[str]:
     return ["auditada", "aprobada"]
 
 def sujetos_col(modulo: str) -> str:
-    return {"Analistas": "analista", "Supervisores": "supervisor", "Profesionales": "auditor"}[modulo]
+    return {"Analistas": "analista", "Supervisores": "supervisor", "Equipos": "auditor"}[modulo]
 
 def prepara_df_modulo(df_in: pd.DataFrame, modulo: str) -> pd.DataFrame:
     dfm = df_in.copy()
