@@ -51,7 +51,7 @@ CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVxG-bO1D5mkgUFCU35d
 @st.cache_data
 def cargar_datos(url: str) -> pd.DataFrame:
     df = pd.read_csv(url, dtype=str)
-    for c in ["analista", "supervisor", "equipo", "estado_carpeta", "profesional", "nivel"]:
+    for c in ["analista", "supervisor", "auditor", "estado_carpeta", "profesional", "nivel", "EQUIPO"]:
         if c in df.columns:
             df[c] = df[c].fillna("").str.strip()
     return df
@@ -111,19 +111,17 @@ def meta_acumulada(modulo: str, df_mod: pd.DataFrame, today: date | None = None)
     return meta, n_sujetos
 
 def estados_validos(modulo: str) -> list[str]:
-    if modulo == "Supervisores":
-        return ["auditada", "aprobada"]
-    # Analistas y Equipos
-    return ["auditada", "aprobada", "calificada"]
+    if modulo == "Analistas":
+        return ["auditada", "aprobada", "calificada"]
+    return ["auditada", "aprobada"]
 
 def sujetos_col(modulo: str) -> str:
-    return {"Analistas": "analista", "Supervisores": "supervisor", "Equipos": "equipo"}[modulo]
+    return {"Analistas": "analista", "Supervisores": "supervisor", "Profesionales": "auditor"}[modulo]
 
 def prepara_df_modulo(df_in: pd.DataFrame, modulo: str) -> pd.DataFrame:
     dfm = df_in.copy()
     col = sujetos_col(modulo)
     if col not in dfm.columns:
-        # Crear una columna vacía si no existe para evitar errores
         dfm[col] = ""
     return dfm
 
@@ -136,7 +134,7 @@ def desarrolladas_por_sujeto(df_mod: pd.DataFrame, modulo: str) -> pd.DataFrame:
 
 def clasifica_categoria(atraso: int, modulo: str) -> str:
     if modulo == "Supervisores":
-        # rangos: <0 Al dia; 0-68 normal; 69-101 medio; >102 alto
+        # Supervisores: <0 Al dia; 0-68 normal; 69-101 medio; >102 alto
         if atraso < 0:
             return "Al día"
         elif atraso <= 68:
@@ -146,7 +144,7 @@ def clasifica_categoria(atraso: int, modulo: str) -> str:
         else:
             return "Atraso alto"
     else:
-        # Analistas / Equipos: <0 Al día; 0-10 normal; 11-34 medio; >35 alto
+        # Analistas: <0 Al día; 0-10 normal; 11-34 medio; >35 alto
         if atraso < 0:
             return "Al día"
         elif atraso <= 10:
@@ -155,7 +153,7 @@ def clasifica_categoria(atraso: int, modulo: str) -> str:
             return "Atraso medio"
         else:
             return "Atraso alto"
-
+            
 def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, total_meta: int):
     # --- Conteo por estado ---
     conteo = (
