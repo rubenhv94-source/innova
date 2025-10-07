@@ -639,57 +639,73 @@ def modulo_vista(nombre_modulo: str):
         return
 
     # ==================== MÓDULO EQUIPOS ====================
-    # a) Semitorta por auditor (truco: porción invisible = suma total)
-    if "auditor" in dfm.columns and (dfm["auditor"].str.strip() != "").any():
-        aud_count = dfm.groupby("auditor").size().reset_index(name="cantidad")
-        total_visible = aud_count["cantidad"].sum()
-        semi_aux = pd.DataFrame({"auditor": ["_oculto_"], "cantidad": [total_visible]})
-        pie_df = pd.concat([aud_count, semi_aux], ignore_index=True)
-
-        colors = px.colors.qualitative.Set3
-        marker_colors = colors[:len(aud_count)] + ["rgba(0,0,0,0)"]
-
-        fig_semi = go.Figure(go.Pie(
-            labels=pie_df["auditor"],
-            values=pie_df["cantidad"],
-            hole=0.55,
-            sort=False,
-            direction="clockwise",
-            textinfo="percent+label",
-            marker=dict(colors=marker_colors),
-            showlegend=False
-        ))
-        # rotar para que el semi quede arriba y la parte invisible abajo
-        fig_semi.update_traces(rotation=180)
-
-        fig_semi.update_layout(
-            title="<b>Distribución por Auditor (semitorta)</b>",
-            margin=dict(l=20, r=20, t=60, b=0),
-            height=420
+    # a) Torta completa por auditor (sin vacíos ni ceros)
+    if "auditor" in dfm.columns:
+        aud_count = (
+            dfm[dfm["auditor"].str.strip() != ""]
+            .groupby("auditor")
+            .size()
+            .reset_index(name="cantidad")
         )
-        st.plotly_chart(fig_semi, use_container_width=True)
+        aud_count = aud_count[aud_count["cantidad"] > 0]
+    
+        if not aud_count.empty:
+            fig_aud = px.pie(
+                aud_count,
+                names="auditor",
+                values="cantidad",
+                hole=0.45,
+                color_discrete_sequence=COLOR_PALETTE,
+                title="<b>Distribución por Auditor</b>",
+            )
+            fig_aud.update_traces(textinfo="label+percent", textfont_size=12)
+            fig_aud.update_layout(
+                margin=dict(l=20, r=20, t=60, b=0),
+                height=420,
+                showlegend=False
+            )
+            st.plotly_chart(fig_aud, use_container_width=True)
+        else:
+            st.warning("No hay datos válidos de auditor para graficar.")
     else:
-        st.warning("No hay datos de auditor para graficar.")
+        st.warning("No existe columna 'auditor' en los datos.")
 
-    # b) Barras por estado para cada EQUIPO
+    # b) Barras por estado para cada EQUIPO (ordenado y segmentado)
     if {"EQUIPO", "estado_carpeta"}.issubset(dfm.columns):
         tmp = dfm.copy()
         tmp["estado_carpeta"] = tmp["estado_carpeta"].str.lower().fillna("")
-        tmp = tmp[tmp["estado_carpeta"].isin(ESTADOS_ORDEN + [""])]
-        grp = (tmp.groupby(["EQUIPO", "estado_carpeta"]).size()
-                  .reset_index(name="cantidad"))
-        # Orden de estados renombrados
+        tmp = tmp[tmp["estado_carpeta"] != ""]
+        tmp = tmp[tmp["estado_carpeta"] != "por asignar"]
+    
+        # Asegurar conversión numérica de EQUIPO para ordenar correctamente
+        tmp["EQUIPO_NUM"] = pd.to_numeric(tmp["EQUIPO"], errors="coerce")
+        tmp = tmp.dropna(subset=["EQUIPO_NUM"])
+        tmp["EQUIPO_NUM"] = tmp["EQUIPO_NUM"].astype(int)
+    
+        grp = (
+            tmp.groupby(["EQUIPO_NUM", "estado_carpeta", "supervisor", "analista"])
+            .size()
+            .reset_index(name="cantidad")
+        )
+    
         grp["estado_label"] = grp["estado_carpeta"].map(ESTADOS_RENOM)
-        estado_cat = [ESTADOS_RENOM.get(e, e) for e in ESTADOS_ORDEN] + ["Por asignar"]
+        estado_cat = [ESTADOS_RENOM.get(e, e) for e in ESTADOS_ORDEN]
         grp["estado_label"] = pd.Categorical(grp["estado_label"], categories=estado_cat, ordered=True)
-
+    
+        # Crear gráfico segmentado en columnas (por supervisor y analistas)
         fig_bar = px.bar(
-            grp, x="EQUIPO", y="cantidad", color="estado_label",
+            grp,
+            x="EQUIPO_NUM",
+            y="cantidad",
+            color="estado_label",
+            facet_col="supervisor",
+            facet_col_wrap=2,
             category_orders={"estado_label": estado_cat},
             color_discrete_sequence=COLOR_PALETTE,
-            title="<b>Estados por EQUIPO</b>",
+            title="<b>Estados por EQUIPO — Segmentado por Supervisor</b>",
             barmode="stack",
         )
+    
         fig_bar.update_layout(
             xaxis_title="EQUIPO",
             yaxis_title="Cantidad",
@@ -701,7 +717,7 @@ def modulo_vista(nombre_modulo: str):
         )
         st.plotly_chart(fig_bar, use_container_width=True)
     else:
-        st.warning("No hay datos de EQUIPO/estado para graficar.")
+        st.warning("No hay datos válidos de EQUIPO/estado para graficar.")
 
     # c) Barras horizontales por Categoría (segmentadas por rol)
     #    Usamos categorías ya calculadas por sujeto: cat_supervisores_df y cat_analistas_df
