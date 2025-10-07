@@ -614,7 +614,7 @@ def modulo_vista(nombre_modulo: str):
             with cx1:
                 custom_metric("💯 Equipo", equipo_label)            
             if analista_label_2:
-                cxa1, cxa2 = cx1.columns(2)
+                cxa1, cxa2 = cx2.columns(2)
                 with cxa1:
                     custom_metric("👨‍💻 Analista2", analista_label_2)
                 with cxa2:
@@ -622,14 +622,14 @@ def modulo_vista(nombre_modulo: str):
             else:
                 with cx1:
                     custom_metric("👨‍💻 Analista", analista_label_1)                    
-            with cx2:
+            with cx3:
                 custom_metric("👩‍💼 Profesional", auditor_label)
       
         else:
             with cx1:
                 custom_metric("💯 Equipo", equipo_label)            
             if analista_label_2:
-                cxa1, cxa2 = cx1.columns(2)
+                cxa1, cxa2 = cx2.columns(2)
                 with cxa1:
                     custom_metric("👨‍💻 Analista2", analista_label_2)
                 with cxa2:
@@ -637,7 +637,7 @@ def modulo_vista(nombre_modulo: str):
             else:
                 with cx1:
                     custom_metric("👨‍💻 Analista", analista_label_1)                    
-            with cx2:
+            with cx3:
                 custom_metric("🕵️‍♀️ Supervisor", supervisor_label)
     
     tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
