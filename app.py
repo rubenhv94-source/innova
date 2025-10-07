@@ -670,7 +670,7 @@ def modulo_vista(nombre_modulo: str):
     else:
         st.warning("No existe columna 'auditor' en los datos.")
 
-    # b) Barras por estado para cada EQUIPO (vista dinámica por Supervisor / Analistas)
+    # b) Barras por estado para cada EQUIPO (vista Supervisor / Analistas tipo A1/A2)
     if {"EQUIPO", "estado_carpeta"}.issubset(dfm.columns):
         st.subheader("📊 Estados por EQUIPO")
         vista_opcion = st.selectbox(
@@ -683,22 +683,23 @@ def modulo_vista(nombre_modulo: str):
         tmp["estado_carpeta"] = tmp["estado_carpeta"].str.lower().fillna("")
         tmp = tmp[~tmp["estado_carpeta"].isin(["", "por asignar"])]
     
-        # Asegurar orden numérico de los equipos
+        # Asegurar que EQUIPO sea numérico para ordenar
         tmp["EQUIPO_NUM"] = pd.to_numeric(tmp["EQUIPO"], errors="coerce")
         tmp = tmp.dropna(subset=["EQUIPO_NUM"])
         tmp["EQUIPO_NUM"] = tmp["EQUIPO_NUM"].astype(int)
     
-        # Preparar vista seleccionada
+        # --- Crear columna "rol" según la vista seleccionada ---
         if vista_opcion == "Supervisor":
-            tmp["grupo"] = tmp["supervisor"].fillna("Sin supervisor")
+            tmp["rol"] = "S"
         else:
-            # Construir columnas A1 y A2 (solo para analistas por equipo)
-            tmp["grupo"] = tmp.groupby("EQUIPO_NUM")["analista"].transform(
-                lambda x: ["A1" if i == 0 else "A2" for i in range(len(x))]
+            # Agrupar analistas por equipo y asignar A1 / A2
+            tmp["rol"] = tmp.groupby("EQUIPO_NUM")["analista"].transform(
+                lambda x: [f"A{i+1}" if i < 2 else f"A{i+1}" for i in range(len(x))]
             )
     
+        # --- Agrupar datos ---
         grp = (
-            tmp.groupby(["EQUIPO_NUM", "grupo", "estado_carpeta"])
+            tmp.groupby(["EQUIPO_NUM", "rol", "estado_carpeta"])
             .size()
             .reset_index(name="cantidad")
         )
@@ -707,28 +708,33 @@ def modulo_vista(nombre_modulo: str):
         estado_cat = [ESTADOS_RENOM.get(e, e) for e in ESTADOS_ORDEN]
         grp["estado_label"] = pd.Categorical(grp["estado_label"], categories=estado_cat, ordered=True)
     
-        # Gráfico de barras apiladas agrupadas
+        # --- Crear gráfico ---
         fig_bar = px.bar(
             grp,
-            x="EQUIPO_NUM",
+            x="rol",
             y="cantidad",
             color="estado_label",
-            barmode="stack",
-            facet_col="grupo",
+            facet_col="EQUIPO_NUM",
+            facet_col_wrap=6,
             category_orders={"estado_label": estado_cat},
             color_discrete_sequence=COLOR_PALETTE,
             title=f"<b>Estados por EQUIPO — Vista: {vista_opcion}</b>",
+            barmode="stack",
         )
     
-        # Ajustes visuales
+        # --- Ajustes de layout ---
         fig_bar.update_layout(
+            height=480,
             font=dict(family="Arial", size=12),
             title_font=dict(size=18, color="#1F9924", family="Arial"),
             plot_bgcolor="white",
             margin=dict(l=20, r=20, t=60, b=60),
             legend_title_text="Estado",
         )
-        fig_bar.update_xaxes(title="EQUIPO")
+    
+        # --- Mejorar visualización de facetas (una por equipo, ordenadas) ---
+        fig_bar.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))  # mostrar solo número de equipo
+        fig_bar.update_xaxes(title="", showticklabels=True)
         fig_bar.update_yaxes(title="Cantidad")
     
         st.plotly_chart(fig_bar, use_container_width=True)
