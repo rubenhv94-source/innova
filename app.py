@@ -783,18 +783,19 @@ def modulo_vista(nombre_modulo: str):
     
             tmp["equipo_rol"] = tmp["EQUIPO_NUM"].astype(str) + " " + tmp["rol"]
     
+            # 👉 Incluir 'rol' en el groupby
             grp = (
-                tmp.groupby(["EQUIPO_NUM", "equipo_rol", "estado_carpeta", "supervisor", "analista"])
+                tmp.groupby(["EQUIPO_NUM", "rol", "equipo_rol", "estado_carpeta", "supervisor", "analista"])
                 .size()
                 .reset_index(name="cantidad")
             )
     
             grp["estado_label"] = grp["estado_carpeta"].map(ESTADOS_RENOM)
             grp["estado_label"] = pd.Categorical(grp["estado_label"], categories=estado_cat, ordered=True)
-            grp = grp.sort_values(["EQUIPO_NUM", "equipo_rol"])
+            grp = grp.sort_values(["EQUIPO_NUM", "rol"])
     
             # --- Separación y posiciones ---
-            grp["xpos"] = grp["EQUIPO_NUM"] * 3 + grp["rol"].map({"A1": 0, "A2": 1})
+            grp["xpos"] = grp["EQUIPO_NUM"] * 3 + grp["rol"].map({"A1": 0, "A2": 1}).fillna(0)
             grp["xpos_label"] = grp["EQUIPO_NUM"].astype(str) + " " + grp["rol"]
     
             fig_ana = px.bar(
@@ -848,6 +849,7 @@ def modulo_vista(nombre_modulo: str):
     
             fig_ana.update_traces(marker_line_width=0)
             st.plotly_chart(fig_ana, use_container_width=False)
+
     else:
         st.warning("No hay datos válidos de EQUIPO/estado para graficar.")
 
