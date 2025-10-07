@@ -102,7 +102,7 @@ def meta_acumulada(modulo: str, df_mod: pd.DataFrame, today: date | None = None)
         .unique()
     )
 
-    n_sujetos = len(sujetos_unicos)
+    n_sujetos = 34*len(sujetos_unicos) if modulo == "Equipo" else len(sujetos_unicos)
     if n_sujetos == 0:
         return 0, 0
 
