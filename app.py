@@ -695,15 +695,22 @@ def modulo_vista(nombre_modulo: str):
             tmp["rol"] = "S"
             tmp["equipo_rol"] = tmp["EQUIPO_NUM"].astype(str) + " " + tmp["rol"]
     
+            # Consolidar por supervisor y estado
             grp = (
-                tmp.groupby(["EQUIPO_NUM", "equipo_rol", "estado_carpeta", "supervisor"])
+                tmp.groupby(["EQUIPO_NUM", "estado_carpeta", "supervisor"])
                 .size()
                 .reset_index(name="cantidad")
             )
     
+            # Si un equipo tiene varios supervisores, sumar totales por equipo y estado
+            # pero conservar el primer nombre del supervisor para tooltip
+            sup_info = grp.groupby("EQUIPO_NUM")["supervisor"].first().to_dict()
+            grp = grp.groupby(["EQUIPO_NUM", "estado_carpeta"], as_index=False)["cantidad"].sum()
+            grp["supervisor"] = grp["EQUIPO_NUM"].map(sup_info)
+    
             grp["estado_label"] = grp["estado_carpeta"].map(ESTADOS_RENOM)
             grp["estado_label"] = pd.Categorical(grp["estado_label"], categories=estado_cat, ordered=True)
-            grp = grp.sort_values(["EQUIPO_NUM", "equipo_rol"])
+            grp = grp.sort_values("EQUIPO_NUM")
     
             # --- Separación visual ---
             grp["xpos"] = grp["EQUIPO_NUM"] * 3
@@ -711,7 +718,7 @@ def modulo_vista(nombre_modulo: str):
     
             fig_sup = px.bar(
                 grp,
-                x="xpos_label",
+                x="xpos",
                 y="cantidad",
                 color="estado_label",
                 category_orders={"estado_label": estado_cat},
@@ -738,14 +745,12 @@ def modulo_vista(nombre_modulo: str):
                     font=dict(size=11, color="#333"),
                 )
     
-            # --- Configuración de scroll ---
+            # --- Scroll dinámico ---
             fig_sup.update_layout(
                 xaxis=dict(
                     title="Equipo",
-                    tickmode="array",
-                    tickvals=grp["EQUIPO_NUM"].unique() * 3,
-                    ticktext=["" for _ in grp["EQUIPO_NUM"].unique()],
-                    range=[grp["EQUIPO_NUM"].min() * 3 - 1, grp["EQUIPO_NUM"].max() * 3 + 2],
+                    tickvals=[],
+                    range=[grp["EQUIPO_NUM"].min() * 3 - 1, grp["EQUIPO_NUM"].max() * 3 + 3],
                 ),
                 yaxis_title="Cantidad",
                 font=dict(family="Arial", size=12),
@@ -754,7 +759,7 @@ def modulo_vista(nombre_modulo: str):
                 margin=dict(l=30, r=30, t=60, b=70),
                 legend_title_text="Estado",
                 height=500,
-                width=max(1000, len(grp["EQUIPO_NUM"].unique()) * 60),
+                width=max(1000, len(grp["EQUIPO_NUM"].unique()) * 80),
             )
     
             fig_sup.update_traces(marker_line_width=0)
