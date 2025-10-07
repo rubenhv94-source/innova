@@ -692,20 +692,23 @@ def modulo_vista(nombre_modulo: str):
         if vista_opcion == "Supervisor":
             tmp["rol"] = "S"
         else:
-            # Determinar A1 y A2 correctamente por analista dentro de cada equipo
-            analistas_orden = (
+            # Agrupar analistas únicos por equipo
+            analistas_unicos = (
                 tmp[["EQUIPO_NUM", "analista"]]
                 .drop_duplicates()
-                .groupby("EQUIPO_NUM")["analista"]
-                .apply(lambda x: dict(zip(x, [f"A{i+1}" for i in range(len(x))])))
-                .to_dict()
+                .sort_values(["EQUIPO_NUM", "analista"])
             )
-        
-            def asignar_rol(row):
-                mapa = analistas_orden.get(row["EQUIPO_NUM"], {})
-                return mapa.get(row["analista"], "A1")
-        
-            tmp["rol"] = tmp.apply(asignar_rol, axis=1)
+    
+            # Asignar A1 / A2 dentro de cada equipo
+            analistas_unicos["rol"] = analistas_unicos.groupby("EQUIPO_NUM").cumcount() + 1
+            analistas_unicos["rol"] = "A" + analistas_unicos["rol"].astype(str)
+    
+            # Unir de nuevo para que cada fila tenga su rol correcto
+            tmp = tmp.merge(
+                analistas_unicos[["EQUIPO_NUM", "analista", "rol"]],
+                on=["EQUIPO_NUM", "analista"],
+                how="left"
+            )
     
         # --- Combinar EQUIPO + rol para eje X (ejemplo: "1 A1", "1 A2") ---
         tmp["equipo_rol"] = tmp["EQUIPO_NUM"].astype(str) + " " + tmp["rol"]
