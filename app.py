@@ -610,17 +610,19 @@ def modulo_vista(nombre_modulo: str):
             with cx3:
                 custom_metric("👩‍💼 Profesional", auditor_label)
     
-        elif nombre_modulo == 'Supervisores':
-            with cx1:
-                custom_metric("💯 Equipo", equipo_label)            
+        elif nombre_modulo == 'Supervisores':           
             if analista_label_2:
-                cxa1, cxa2 = cx2.columns(2)
+                cxa1, cxa2, cxa3 = cx2.columns(2)
                 with cxa1:
-                    custom_metric("👨‍💻 Analista2", analista_label_2)
+                    custom_metric("💯 Equipo", equipo_label) 
                 with cxa2:
+                    custom_metric("👨‍💻 Analista2", analista_label_2)
+                with cxa3:
                     custom_metric("👨‍💻 Analista2", analista_label_2)                    
             else:
                 with cx1:
+                    custom_metric("💯 Equipo", equipo_label)                
+                with cx2:
                     custom_metric("👨‍💻 Analista", analista_label_1)                    
             with cx3:
                 custom_metric("👩‍💼 Profesional", auditor_label)
