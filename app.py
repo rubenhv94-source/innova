@@ -611,37 +611,33 @@ def modulo_vista(nombre_modulo: str):
                 custom_metric("👩‍💼 Profesional", auditor_label)
     
         elif nombre_modulo == 'Supervisores':
+            with cx1:
+                custom_metric("💯 Equipo", equipo_label)            
             if analista_label_2:
-                cxa1, cxa2, cxa3 = cx1.columns(3)
+                cxa1, cxa2 = cx1.columns(2)
                 with cxa1:
-                    custom_metric("💯 Equipo", equipo_label)
-                with cxa2:
                     custom_metric("👨‍💻 Analista2", analista_label_2)
-                with cxa3:
+                with cxa2:
                     custom_metric("👨‍💻 Analista2", analista_label_2)                    
             else:
                 with cx1:
-                    custom_metric("💯 Equipo", equipo_label)
-                with cx2:
                     custom_metric("👨‍💻 Analista", analista_label_1)                    
-            with cx3:
+            with cx2:
                 custom_metric("👩‍💼 Profesional", auditor_label)
       
         else:
+            with cx1:
+                custom_metric("💯 Equipo", equipo_label)            
             if analista_label_2:
-                cxa1, cxa2, cxa3 = cx1.columns(3)
+                cxa1, cxa2 = cx1.columns(2)
                 with cxa1:
-                    custom_metric("💯 Equipo", equipo_label)
-                with cxa2:
                     custom_metric("👨‍💻 Analista2", analista_label_2)
-                with cxa3:
+                with cxa2:
                     custom_metric("👨‍💻 Analista2", analista_label_2)                    
             else:
                 with cx1:
-                    custom_metric("💯 Equipo", equipo_label)
-                with cx2:
                     custom_metric("👨‍💻 Analista", analista_label_1)                    
-            with cx3:
+            with cx2:
                 custom_metric("🕵️‍♀️ Supervisor", supervisor_label)
     
     tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
