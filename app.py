@@ -106,7 +106,7 @@ def meta_acumulada(modulo: str, df_mod: pd.DataFrame, today: date | None = None)
     if n_sujetos == 0:
         return 0, 0
 
-    por_sujeto = 34 if modulo == "Supervisores" else 17
+    por_sujeto = 17 if modulo == "Analistas" else 34
     meta = dias_habiles * por_sujeto * n_sujetos
     return meta, n_sujetos
 
