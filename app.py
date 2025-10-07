@@ -88,7 +88,7 @@ def meta_acumulada(modulo: str, df_mod: pd.DataFrame, today: date | None = None)
     if dias_habiles <= 0:
         return 0, 0
 
-    col = sujetos_col(modulo)
+    col = sujetos_col('Supervisores') if modulo == "Equipos" else sujetos_col(modulo)
     if col not in df_mod.columns:
         return 0, 0
 
@@ -102,7 +102,7 @@ def meta_acumulada(modulo: str, df_mod: pd.DataFrame, today: date | None = None)
         .unique()
     )
 
-    n_sujetos = 34*len(sujetos_unicos) if modulo == "Equipos" else len(sujetos_unicos)
+    n_sujetos = len(sujetos_unicos)
     if n_sujetos == 0:
         return 0, 0
 
