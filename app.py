@@ -422,8 +422,8 @@ with st.sidebar:
         st.rerun()
 
     # Selects con opciones
-    if "profesional" in df.columns and df["profesional"].str.strip().any():
-        opciones_prof = ["Todos"] + sorted(df["profesional"].unique())
+    if "auditor" in df.columns and df["auditor"].str.strip().any():
+        opciones_prof = ["Todos"] + sorted(df["auditor"].unique())
         st.session_state.sel_prof = st.selectbox("👩‍💼 Profesional", opciones_prof, index=opciones_prof.index(st.session_state.sel_prof))
 
     if "supervisor" in df.columns:
@@ -442,8 +442,6 @@ with st.sidebar:
         opciones_nivel = ["Todos"] + sorted(df["nivel"].dropna().unique())
         st.session_state.sel_nivel = st.selectbox("🔹 Nivel", opciones_nivel, index=opciones_nivel.index(st.session_state.sel_nivel))
 
-    # ---------- NUEVO: Filtro por Categoría ----------
-    # Para poblar opciones de categoría usamos las 4 conocidas
     opciones_categoria = ["Todos", "Al día", "Atraso normal", "Atraso medio", "Atraso alto"]
     st.session_state.sel_categoria = st.selectbox("🏷️ Categoría", opciones_categoria, index=opciones_categoria.index(st.session_state.sel_categoria))
 
