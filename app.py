@@ -539,7 +539,7 @@ def modulo_vista(nombre_modulo: str):
 
     dias_habiles = business_days_since_start(date.today() - timedelta(days=1))
     meta_total, n_sujetos = meta_acumulada(nombre_modulo, dfm)
-    st.info(f"Equipo: **{n_sujetos:,}** — Días hábiles considerados: **{dias_habiles}**".replace(",", "."))
+    st.info(f"Equipo: **{n_sujetos:,}** - Días hábiles considerados: **{dias_habiles}**".replace(",", ".") - Fecha de corte: **{date.today() - timedelta(days=1)}**)
 
     validos = estados_validos(nombre_modulo)
     desarrolladas_total = (
