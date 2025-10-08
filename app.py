@@ -670,6 +670,26 @@ def modulo_vista(nombre_modulo: str):
     else:
         st.warning("No existe columna 'auditor' en los datos.")
 
+        with st.container():
+            if nombre_modulo == 'Analistas':
+                cx1, cx2, cx3 = st.columns(3)
+                with cx1: custom_metric("💯 Equipo", equipo_label)
+                with cx2: custom_metric("🕵️‍♀️ Supervisor", supervisor_label)
+                with cx3: custom_metric("👩‍💼 Profesional", auditor_label)
+        
+            elif nombre_modulo == 'Supervisores':
+                cx1, cx2, cx3, cx4 = st.columns(4)
+                with cx1: custom_metric("💯 Equipo", equipo_label) 
+                with cx2: custom_metric("👨‍💻 Analista1", analista_label_1)
+                with cx3: custom_metric("👨‍💻 Analista2", analista_label_2)
+                with cx4: custom_metric("👩‍💼 Profesional", auditor_label)                    
+            else:
+                cx1, cx2, cx3, cx4 = st.columns(4)
+                with cx1: custom_metric("💯 Equipo", equipo_label) 
+                with cx2: custom_metric("👨‍💻 Analista1", analista_label_1)
+                with cx3: custom_metric("👨‍💻 Analista2", analista_label_2)
+                with cx4: custom_metric("🕵️‍♀️ Supervisor", supervisor_label)
+    
     # b) Barras por estado para cada EQUIPO (tabs, separación visual, etiquetas y scroll horizontal)
     if {"EQUIPO", "estado_carpeta"}.issubset(dfm.columns):
         st.subheader("📊 Estados por EQUIPO")
