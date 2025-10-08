@@ -670,6 +670,7 @@ def modulo_vista(nombre_modulo: str):
     else:
         st.warning("No existe columna 'auditor' en los datos.")
 
+    if nombre_modulo == "Equipos":        
         with st.container():
             if nombre_modulo == 'Analistas':
                 cx1, cx2, cx3 = st.columns(3)
