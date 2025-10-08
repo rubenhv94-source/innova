@@ -455,7 +455,7 @@ cat_equipos_df = categorias_por_sujeto(df, "Equipos", dias_habiles_ref)  # audit
 df_filtrado = df.copy()
 
 if st.session_state.sel_prof != "Todos":
-    df_filtrado = df_filtrado[df_filtrado["profesional"] == st.session_state.sel_prof]
+    df_filtrado = df_filtrado[df_filtrado["auditor"] == st.session_state.sel_prof]
 if st.session_state.sel_sup != "Todos":
     df_filtrado = df_filtrado[df_filtrado["supervisor"] == st.session_state.sel_sup]
 if st.session_state.sel_ana != "Todos":
