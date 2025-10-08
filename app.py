@@ -557,6 +557,21 @@ def modulo_vista(nombre_modulo: str):
     per_subject = 34 if nombre_modulo == "Supervisores" else 17
     meta_individual = per_subject * dias_habiles_loc
 
+    # ---------- Contenido por módulo ----------
+    if nombre_modulo != "Equipos":
+        col_fig1, col_fig2 = st.columns(2)
+        with col_fig1:
+            fig1 = grafico_estado_con_meta(dfm, nombre_modulo, meta_total)
+            st.plotly_chart(fig1, use_container_width=True)
+        with col_fig2:
+            fig2 = grafico_categorias_barh(dfm, nombre_modulo, meta_individual)
+            st.plotly_chart(fig2, use_container_width=True)
+
+        tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
+        st.markdown(f"<h3 style='color:#1F9924; font-weight:600; margin-top: 1em;'>Resumen {nombre_modulo}</h3>", unsafe_allow_html=True)
+        st.dataframe(tabla, use_container_width=True)
+        return
+    
     # ---------- Cabecera de métricas de contexto ----------
     analistas_filtrados = sorted(df_filtrado["analista"].dropna().unique()) if "analista" in df_filtrado.columns else []
     supervisores_filtrados = sorted(df_filtrado["supervisor"].dropna().unique()) if "supervisor" in df_filtrado.columns else []
@@ -622,21 +637,6 @@ def modulo_vista(nombre_modulo: str):
             with cx2: custom_metric("👨‍💻 Analista1", analista_label_1)
             with cx3: custom_metric("👨‍💻 Analista2", analista_label_2)
             with cx4: custom_metric("🕵️‍♀️ Supervisor", supervisor_label)
-
-    # ---------- Contenido por módulo ----------
-    if nombre_modulo != "Equipos":
-        col_fig1, col_fig2 = st.columns(2)
-        with col_fig1:
-            fig1 = grafico_estado_con_meta(dfm, nombre_modulo, meta_total)
-            st.plotly_chart(fig1, use_container_width=True)
-        with col_fig2:
-            fig2 = grafico_categorias_barh(dfm, nombre_modulo, meta_individual)
-            st.plotly_chart(fig2, use_container_width=True)
-
-        tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
-        st.markdown(f"<h3 style='color:#1F9924; font-weight:600; margin-top: 1em;'>Resumen {nombre_modulo}</h3>", unsafe_allow_html=True)
-        st.dataframe(tabla, use_container_width=True)
-        return
 
     # ==================== MÓDULO EQUIPOS ====================
     # a) Torta completa por auditor (sin vacíos ni ceros)
