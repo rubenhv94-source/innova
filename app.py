@@ -511,7 +511,7 @@ if st.session_state.pagina == "Inicio":
 if st.session_state.pagina == "Resumen":
     st.markdown(f"<h1 style='color:#1F9924;'>Resumen general</h1>", unsafe_allow_html=True)
     dias_habiles = business_days_since_start(date.today() - timedelta(days=1))
-    st.info(f"Días hábiles considerados: **{dias_habiles}**")
+    st.info(f"Días hábiles considerados: **{dias_habiles}** - Fecha de corte: **{date.today() - timedelta(days=1)}**")
 
     por_asignar = df_filtrado["estado_carpeta"].fillna("").eq("").sum()
     equipo_va = df_filtrado["analista"].nunique() + df_filtrado["supervisor"].nunique()
