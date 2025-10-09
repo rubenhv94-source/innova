@@ -485,6 +485,35 @@ with st.sidebar:
                  index=opciones_categoria.index(st.session_state.sel_categoria) if st.session_state.sel_categoria in opciones_categoria else 0,
                  key="sel_categoria")
 
+# ========= Preparar categorías por sujeto (para filtro transversal) =========
+dias_habiles_ref = business_days_since_start(date.today() - timedelta(days=1))
+cat_analistas_df = categorias_por_sujeto(df, "Analistas", dias_habiles_ref)
+cat_supervisores_df = categorias_por_sujeto(df, "Supervisores", dias_habiles_ref)
+cat_equipos_df = categorias_por_sujeto(df, "Equipos", dias_habiles_ref)
+
+# ========= Aplicar filtros al DataFrame =========
+df_filtrado = df.copy()
+
+if st.session_state.sel_prof != "Todos":
+    df_filtrado = df_filtrado[df_filtrado["auditor"] == st.session_state.sel_prof]
+if st.session_state.sel_sup != "Todos":
+    df_filtrado = df_filtrado[df_filtrado["supervisor"] == st.session_state.sel_sup]
+if st.session_state.sel_ana != "Todos":
+    df_filtrado = df_filtrado[df_filtrado["analista"] == st.session_state.sel_ana]
+if st.session_state.sel_estado != "Todos":
+    df_filtrado = df_filtrado[df_filtrado["estado_carpeta"].str.lower() == st.session_state.sel_estado.lower()]
+if st.session_state.sel_nivel != "Todos":
+    df_filtrado = df_filtrado[df_filtrado["nivel"] == st.session_state.sel_nivel]
+
+# Aplicar filtro por Categoría (transversal)
+df_filtrado = aplicar_filtro_categoria_transversal(
+    df_filtrado,
+    st.session_state.sel_categoria,
+    cat_analistas_df,
+    cat_supervisores_df,
+    cat_equipos_df
+)
+
 # ============ INICIO ============
 if st.session_state.pagina == "Inicio":
     c1, c2, c3 = st.columns([1, 1, 1])
