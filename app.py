@@ -7,6 +7,7 @@ import plotly.io as pio
 from datetime import datetime, date, timedelta
 import math
 
+
 # ============ CONFIG VISUAL ============
 pio.templates.default = "seaborn"
 COLOR_PALETTE = px.colors.sequential.Greens
