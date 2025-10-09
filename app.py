@@ -410,18 +410,18 @@ if seleccion != pagina_actual:
 with st.sidebar:
     st.header("🔎 Filtros")
 
-    # Inicialización de estado
+    # Inicialización de estado (solo si no existe)
     for k in ["sel_prof", "sel_sup", "sel_ana", "sel_estado", "sel_nivel", "sel_categoria"]:
-        st.session_state.setdefault(k, "Todos")
+        if k not in st.session_state:
+            st.session_state[k] = "Todos"
 
     # Botón Borrar filtros
     if st.button("🧹 Borrar filtros", use_container_width=True):
         for k in ["sel_prof", "sel_sup", "sel_ana", "sel_estado", "sel_nivel", "sel_categoria"]:
             st.session_state[k] = "Todos"
-        # Solo limpiar filtros sin cambiar de página
         st.rerun()
 
-    # Filtrado dinámico
+    # Filtrado dinámico en cascada
     df_temp = df.copy()
     if st.session_state.sel_prof != "Todos":
         df_temp = df_temp[df_temp["auditor"] == st.session_state.sel_prof]
@@ -430,48 +430,38 @@ with st.sidebar:
     if st.session_state.sel_ana != "Todos":
         df_temp = df_temp[df_temp["analista"] == st.session_state.sel_ana]
 
-    # Opciones dependientes
+    # Opciones disponibles después de aplicar filtro dinámico
     opciones_prof = ["Todos"] + sorted(df_temp["auditor"].dropna().unique())
     opciones_sup = ["Todos"] + sorted(df_temp["supervisor"].dropna().unique())
     opciones_ana = ["Todos"] + sorted(df_temp["analista"].dropna().unique())
     opciones_estado = ["Todos"] + sorted(set(df["estado_carpeta"].str.lower().dropna().unique()) | {""})
     opciones_nivel = ["Todos"] + sorted(df_temp["nivel"].dropna().unique()) if "nivel" in df_temp.columns else ["Todos"]
-
-    # Selectboxes con valores actualizados
-    st.session_state.sel_prof = st.selectbox("👩‍💼 Profesional", opciones_prof, index=opciones_prof.index(st.session_state.sel_prof) if st.session_state.sel_prof in opciones_prof else 0, key="sel_prof")
-    st.session_state.sel_sup = st.selectbox("🕵️‍♀️ Supervisor", opciones_sup, index=opciones_sup.index(st.session_state.sel_sup) if st.session_state.sel_sup in opciones_sup else 0, key="sel_sup")
-    st.session_state.sel_ana = st.selectbox("👨‍💻 Analista", opciones_ana, index=opciones_ana.index(st.session_state.sel_ana) if st.session_state.sel_ana in opciones_ana else 0, key="sel_ana")
-    st.session_state.sel_estado = st.selectbox("📤 Estado", opciones_estado, index=opciones_estado.index(st.session_state.sel_estado) if st.session_state.sel_estado in opciones_estado else 0, key="sel_estado")
-    st.session_state.sel_nivel = st.selectbox("🔹 Nivel", opciones_nivel, index=opciones_nivel.index(st.session_state.sel_nivel) if st.session_state.sel_nivel in opciones_nivel else 0, key="sel_nivel")
-
     opciones_categoria = ["Todos", "Al día", "Atraso normal", "Atraso medio", "Atraso alto"]
-    st.session_state.sel_categoria = st.selectbox("🏷️ Categoría", opciones_categoria, index=opciones_categoria.index(st.session_state.sel_categoria), key="sel_categoria")
 
-# ========= Preparar categorías por sujeto (para filtro transversal) =========
-dias_habiles_ref = business_days_since_start(date.today() - timedelta(days=1))
-cat_analistas_df = categorias_por_sujeto(df, "Analistas", dias_habiles_ref)
-cat_supervisores_df = categorias_por_sujeto(df, "Supervisores", dias_habiles_ref)
-cat_equipos_df = categorias_por_sujeto(df, "Equipos", dias_habiles_ref)  # auditor como sujeto
+    # Mostrar los selectboxes sin asignar directamente a session_state
+    st.selectbox("👩‍💼 Profesional", opciones_prof,
+                 index=opciones_prof.index(st.session_state.sel_prof) if st.session_state.sel_prof in opciones_prof else 0,
+                 key="sel_prof")
 
-# ========= Aplicar filtros (persistentes) =========
-df_filtrado = df.copy()
+    st.selectbox("🕵️‍♀️ Supervisor", opciones_sup,
+                 index=opciones_sup.index(st.session_state.sel_sup) if st.session_state.sel_sup in opciones_sup else 0,
+                 key="sel_sup")
 
-if st.session_state.sel_prof != "Todos":
-    df_filtrado = df_filtrado[df_filtrado["auditor"] == st.session_state.sel_prof]
-if st.session_state.sel_sup != "Todos":
-    df_filtrado = df_filtrado[df_filtrado["supervisor"] == st.session_state.sel_sup]
-if st.session_state.sel_ana != "Todos":
-    df_filtrado = df_filtrado[df_filtrado["analista"] == st.session_state.sel_ana]
-if st.session_state.sel_estado != "Todos":
-    df_filtrado = df_filtrado[df_filtrado["estado_carpeta"].str.lower() == st.session_state.sel_estado.lower()]
-if st.session_state.sel_nivel != "Todos":
-    df_filtrado = df_filtrado[df_filtrado["nivel"] == st.session_state.sel_nivel]
+    st.selectbox("👨‍💻 Analista", opciones_ana,
+                 index=opciones_ana.index(st.session_state.sel_ana) if st.session_state.sel_ana in opciones_ana else 0,
+                 key="sel_ana")
 
-# Filtro por Categoría (transversal con mapeo de categorías por sujeto)
-df_filtrado = aplicar_filtro_categoria_transversal(
-    df_filtrado, st.session_state.sel_categoria,
-    cat_analistas_df, cat_supervisores_df, cat_equipos_df
-)
+    st.selectbox("📤 Estado", opciones_estado,
+                 index=opciones_estado.index(st.session_state.sel_estado) if st.session_state.sel_estado in opciones_estado else 0,
+                 key="sel_estado")
+
+    st.selectbox("🔹 Nivel", opciones_nivel,
+                 index=opciones_nivel.index(st.session_state.sel_nivel) if st.session_state.sel_nivel in opciones_nivel else 0,
+                 key="sel_nivel")
+
+    st.selectbox("🏷️ Categoría", opciones_categoria,
+                 index=opciones_categoria.index(st.session_state.sel_categoria),
+                 key="sel_categoria")
 
 # ============ INICIO ============
 if st.session_state.pagina == "Inicio":
