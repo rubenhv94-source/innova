@@ -415,7 +415,7 @@ with st.sidebar:
         st.session_state.setdefault(k, "Todos")
 
     # Botón Borrar filtros
-    if st.button("🧹 Borrar filtros y reiniciar", use_container_width=True):
+    if st.button("🧹 Borrar filtros", use_container_width=True):
         for k in ["sel_prof", "sel_sup", "sel_ana", "sel_estado", "sel_nivel", "sel_categoria"]:
             st.session_state[k] = "Todos"
         # Solo limpiar filtros sin cambiar de página
