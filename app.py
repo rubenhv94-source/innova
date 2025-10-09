@@ -417,33 +417,34 @@ with st.sidebar:
     if st.button("🧹 Borrar filtros y reiniciar", use_container_width=True):
         for k in ["sel_prof", "sel_sup", "sel_ana", "sel_estado", "sel_nivel", "sel_categoria"]:
             st.session_state[k] = "Todos"
-        st.session_state.pagina = "Inicio"
-        st.query_params["pagina"] = "Inicio"
+        # Solo limpiar filtros sin cambiar de página
         st.rerun()
 
-    # Selects con opciones
-    if "auditor" in df.columns and df["auditor"].str.strip().any():
-        opciones_prof = ["Todos"] + sorted(df["auditor"].unique())
-        st.session_state.sel_prof = st.selectbox("👩‍💼 Profesional", opciones_prof, index=opciones_prof.index(st.session_state.sel_prof))
+    # Filtrado dinámico
+    df_temp = df.copy()
+    if st.session_state.sel_prof != "Todos":
+        df_temp = df_temp[df_temp["auditor"] == st.session_state.sel_prof]
+    if st.session_state.sel_sup != "Todos":
+        df_temp = df_temp[df_temp["supervisor"] == st.session_state.sel_sup]
+    if st.session_state.sel_ana != "Todos":
+        df_temp = df_temp[df_temp["analista"] == st.session_state.sel_ana]
 
-    if "supervisor" in df.columns:
-        opciones_sup = ["Todos"] + sorted(df["supervisor"].unique())
-        st.session_state.sel_sup = st.selectbox("🕵️‍♀️ Supervisor", opciones_sup, index=opciones_sup.index(st.session_state.sel_sup))
+    # Opciones dependientes
+    opciones_prof = ["Todos"] + sorted(df_temp["auditor"].dropna().unique())
+    opciones_sup = ["Todos"] + sorted(df_temp["supervisor"].dropna().unique())
+    opciones_ana = ["Todos"] + sorted(df_temp["analista"].dropna().unique())
+    opciones_estado = ["Todos"] + sorted(set(df["estado_carpeta"].str.lower().dropna().unique()) | {""})
+    opciones_nivel = ["Todos"] + sorted(df_temp["nivel"].dropna().unique()) if "nivel" in df_temp.columns else ["Todos"]
 
-    if "analista" in df.columns:
-        opciones_ana = ["Todos"] + sorted(df["analista"].unique())
-        st.session_state.sel_ana = st.selectbox("👨‍💻 Analista", opciones_ana, index=opciones_ana.index(st.session_state.sel_ana))
-
-    if "estado_carpeta" in df.columns:
-        opciones_estado = ["Todos"] + sorted(set(df["estado_carpeta"].str.lower().dropna().unique()) | {""})
-        st.session_state.sel_estado = st.selectbox("📤 Estado", opciones_estado, index=opciones_estado.index(st.session_state.sel_estado))
-
-    if "nivel" in df.columns:
-        opciones_nivel = ["Todos"] + sorted(df["nivel"].dropna().unique())
-        st.session_state.sel_nivel = st.selectbox("🔹 Nivel", opciones_nivel, index=opciones_nivel.index(st.session_state.sel_nivel))
+    # Selectboxes con valores actualizados
+    st.session_state.sel_prof = st.selectbox("👩‍💼 Profesional", opciones_prof, index=opciones_prof.index(st.session_state.sel_prof) if st.session_state.sel_prof in opciones_prof else 0, key="sel_prof")
+    st.session_state.sel_sup = st.selectbox("🕵️‍♀️ Supervisor", opciones_sup, index=opciones_sup.index(st.session_state.sel_sup) if st.session_state.sel_sup in opciones_sup else 0, key="sel_sup")
+    st.session_state.sel_ana = st.selectbox("👨‍💻 Analista", opciones_ana, index=opciones_ana.index(st.session_state.sel_ana) if st.session_state.sel_ana in opciones_ana else 0, key="sel_ana")
+    st.session_state.sel_estado = st.selectbox("📤 Estado", opciones_estado, index=opciones_estado.index(st.session_state.sel_estado) if st.session_state.sel_estado in opciones_estado else 0, key="sel_estado")
+    st.session_state.sel_nivel = st.selectbox("🔹 Nivel", opciones_nivel, index=opciones_nivel.index(st.session_state.sel_nivel) if st.session_state.sel_nivel in opciones_nivel else 0, key="sel_nivel")
 
     opciones_categoria = ["Todos", "Al día", "Atraso normal", "Atraso medio", "Atraso alto"]
-    st.session_state.sel_categoria = st.selectbox("🏷️ Categoría", opciones_categoria, index=opciones_categoria.index(st.session_state.sel_categoria))
+    st.session_state.sel_categoria = st.selectbox("🏷️ Categoría", opciones_categoria, index=opciones_categoria.index(st.session_state.sel_categoria), key="sel_categoria")
 
 # ========= Preparar categorías por sujeto (para filtro transversal) =========
 dias_habiles_ref = business_days_since_start(date.today() - timedelta(days=1))
