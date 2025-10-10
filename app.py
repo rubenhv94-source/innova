@@ -423,6 +423,20 @@ def grafico_estado_analistas(df: pd.DataFrame):
     import plotly.graph_objects as go
     import numpy as np
 
+    ESTADOS_RENOM = {
+        "": "Por asignar",
+        "asignada": "0. asignada",
+        "devuelta": "1. devuelta",
+        "calificada": "2. calificada",
+        "aprobada": "3. aprobada",
+        "auditada": "4. auditada"
+    }
+
+    COLOR_PALETTE = [
+        "#E8F6F3", "#A3E4D7", "#76D7C4",
+        "#48C9B0", "#1ABC9C", "#148F77"
+    ]
+
     # Asignar roles por equipo: A1, A2...
     analistas_unicos = (
         df[["EQUIPO_NUM", "analista"]]
@@ -432,24 +446,23 @@ def grafico_estado_analistas(df: pd.DataFrame):
     analistas_unicos["rol"] = analistas_unicos.groupby("EQUIPO_NUM").cumcount() + 1
     analistas_unicos["rol"] = "A" + analistas_unicos["rol"].astype(str)
 
-    df = df.merge(
-        analistas_unicos,
-        on=["EQUIPO_NUM", "analista"],
-        how="left"
-    )
-
+    df = df.merge(analistas_unicos, on=["EQUIPO_NUM", "analista"], how="left")
     df["equipo_rol"] = df["EQUIPO_NUM"].astype(str) + " " + df["rol"]
 
-    # Agrupar y pivotear
+    # Homologar estado
+    df["estado_homol"] = df["estado_carpeta"].str.lower().map(ESTADOS_RENOM).fillna("Otro")
+
+    # Agrupar
     grouped = (
-        df.groupby(["EQUIPO_NUM", "analista", "equipo_rol", "estado_carpeta"])
+        df.groupby(["EQUIPO_NUM", "analista", "equipo_rol", "estado_homol"])
         .size()
         .reset_index(name="cantidad")
     )
 
+    # Pivot para tener estados como columnas
     pivot = grouped.pivot_table(
         index=["EQUIPO_NUM", "analista", "equipo_rol"],
-        columns="estado_carpeta",
+        columns="estado_homol",
         values="cantidad",
         fill_value=0
     ).reset_index()
@@ -486,7 +499,8 @@ def grafico_estado_analistas(df: pd.DataFrame):
         legend_title_text="Estado",
         height=500,
         margin=dict(l=30, r=30, t=60, b=70),
-        bargap=0.2,
+        bargap=0.4,  # barras más delgadas
+        colorway=COLOR_PALETTE,
         xaxis=dict(
             tickmode="array",
             tickvals=pivot["equipo_rol"],
