@@ -430,28 +430,44 @@ def grafico_estado_analistas(df: pd.DataFrame):
         ordered=True
     )
 
-    # Asegurar tipos
     df["EQUIPO_NUM"] = pd.to_numeric(df["EQUIPO"], errors="coerce")
     df = df.dropna(subset=["EQUIPO_NUM", "analista"])
     df["EQUIPO_NUM"] = df["EQUIPO_NUM"].astype(int)
 
+    # Asignar rol A1, A2... por equipo
+    analistas_unicos = (
+        df[["EQUIPO_NUM", "analista", "supervisor"]]
+        .drop_duplicates()
+        .sort_values(["EQUIPO_NUM", "analista"])
+    )
+    analistas_unicos["rol"] = analistas_unicos.groupby("EQUIPO_NUM").cumcount() + 1
+    analistas_unicos["rol"] = "A" + analistas_unicos["rol"].astype(str)
+
+    df = df.merge(
+        analistas_unicos[["EQUIPO_NUM", "analista", "rol", "supervisor"]],
+        on=["EQUIPO_NUM", "analista", "supervisor"],
+        how="left"
+    )
+
+    df["equipo_rol"] = df["EQUIPO_NUM"].astype(str) + " " + df["rol"]
+
     # Agrupación
     grouped = (
-        df.groupby(["EQUIPO_NUM", "supervisor", "analista", "estado_label"])
+        df.groupby(["EQUIPO_NUM", "equipo_rol", "supervisor", "analista", "estado_label"])
         .size()
         .unstack(fill_value=0)
         .reset_index()
     )
 
-    estado_cols = [col for col in grouped.columns if col not in ["EQUIPO_NUM", "supervisor", "analista"]]
-    
+    estado_cols = [col for col in grouped.columns if col not in ["EQUIPO_NUM", "equipo_rol", "supervisor", "analista"]]
+
     # Crear gráfico
     fig = go.Figure()
 
     for estado in estado_cols:
         fig.add_trace(
             go.Bar(
-                x=grouped["EQUIPO_NUM"].astype(str),
+                x=grouped["equipo_rol"],
                 y=grouped[estado],
                 name=estado,
                 customdata=np.stack([
@@ -469,6 +485,7 @@ def grafico_estado_analistas(df: pd.DataFrame):
             )
         )
 
+    # Layout con etiquetas más limpias
     fig.update_layout(
         barmode="stack",
         title="<b>Distribución por Estado — Vista: Analistas</b>",
@@ -482,6 +499,11 @@ def grafico_estado_analistas(df: pd.DataFrame):
         margin=dict(l=30, r=30, t=60, b=80),
         bargap=0.2,
         colorway=COLOR_PALETTE,
+        xaxis=dict(
+            tickmode='array',
+            tickvals=grouped["equipo_rol"],
+            ticktext=grouped["EQUIPO_NUM"].astype(str),
+        )
     )
 
     return fig
