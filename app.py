@@ -793,7 +793,9 @@ def modulo_vista(nombre_modulo: str):
                 barmode="stack",
                 title="<b>Estados por EQUIPO — Vista: Supervisor</b>",
             )
-        
+            
+            grp = grp.reset_index(drop=True)
+            
             fig_sup.update_traces(
                 hovertemplate="Equipo %{customdata[0]}<br><b>Supervisor:</b> %{customdata[1]}<br><b>Estado:</b> %{customdata[2]}<br><b>Cantidad:</b> %{y}<extra></extra>",
                 customdata=np.stack([grp["EQUIPO_NUM"], grp["supervisor"], grp["estado_label"]], axis=-1),
