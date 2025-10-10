@@ -419,7 +419,7 @@ def grafico_estado_supervisor(df: pd.DataFrame):
 
     return fig
 
-def grafico_estado_analistas(df: pd.DataFrame):
+def grafico_estado_analistas_solo_equipo(df: pd.DataFrame):
     # Crear roles A1, A2 por equipo
     analistas_unicos = (
         df[["EQUIPO_NUM", "analista", "supervisor"]]
@@ -435,6 +435,7 @@ def grafico_estado_analistas(df: pd.DataFrame):
         how="left"
     )
 
+    df["equipo_rol"] = df["EQUIPO_NUM"].astype(str) + " " + df["rol"]
     df["estado_label"] = df["estado_carpeta"].map(ESTADOS_RENOM)
     df["estado_label"] = pd.Categorical(
         df["estado_label"],
@@ -442,21 +443,20 @@ def grafico_estado_analistas(df: pd.DataFrame):
         ordered=True
     )
 
-    # Agrupar
+    # Agrupar para generar trazas
     grp = (
-        df.groupby(["EQUIPO_NUM", "estado_label", "supervisor", "analista"])
+        df.groupby(["equipo_rol", "estado_label", "supervisor", "analista", "EQUIPO_NUM"])
         .size()
         .reset_index(name="cantidad")
     )
 
-    # Crear figura con trazas por estado
     fig = go.Figure()
 
     for estado in [ESTADOS_RENOM[e] for e in ESTADOS_ORDEN]:
         subset = grp[grp["estado_label"] == estado]
         fig.add_trace(
             go.Bar(
-                x=subset["EQUIPO_NUM"],
+                x=subset["equipo_rol"],
                 y=subset["cantidad"],
                 name=estado,
                 customdata=np.stack([
@@ -473,7 +473,10 @@ def grafico_estado_analistas(df: pd.DataFrame):
             )
         )
 
-    # Layout
+    # Mostrar solo número del equipo en eje X
+    x_vals = grp["equipo_rol"].unique()
+    x_labels = [v.split()[0] for v in x_vals]
+
     fig.update_layout(
         barmode="stack",
         title="<b>Estados por EQUIPO — Vista: Analistas</b>",
@@ -486,7 +489,12 @@ def grafico_estado_analistas(df: pd.DataFrame):
         height=500,
         margin=dict(l=30, r=30, t=60, b=70),
         bargap=0.2,
-        colorway=COLOR_PALETTE
+        colorway=COLOR_PALETTE,
+        xaxis=dict(
+            tickmode="array",
+            tickvals=x_vals,
+            ticktext=x_labels
+        )
     )
 
     return fig
@@ -904,7 +912,7 @@ def modulo_vista(nombre_modulo: str):
         # 👨‍💻 VISTA ANALISTAS
         # =======================================================
         with tab_ana:
-            fig_ana = grafico_estado_analistas(tmp_base)
+            fig_ana = grafico_estado_analistas_solo_equipo(tmp_base)
             st.plotly_chart(fig_ana, use_container_width=True)
 
     else:
