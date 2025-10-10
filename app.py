@@ -420,7 +420,7 @@ def grafico_estado_supervisor(df: pd.DataFrame):
     return fig
 
 def grafico_estado_analistas(df: pd.DataFrame):
-    # Asignar rol A1, A2... por equipo
+    # Crear roles por equipo (A1, A2...)
     analistas_unicos = (
         df[["EQUIPO_NUM", "analista", "supervisor"]]
         .drop_duplicates()
@@ -430,74 +430,74 @@ def grafico_estado_analistas(df: pd.DataFrame):
     analistas_unicos["rol"] = "A" + analistas_unicos["rol"].astype(str)
 
     df = df.merge(
-        analistas_unicos[["EQUIPO_NUM", "analista", "rol", "supervisor"]],
-        on=["EQUIPO_NUM", "analista", "supervisor"],
+        analistas_unicos[["EQUIPO_NUM", "analista", "rol"]],
+        on=["EQUIPO_NUM", "analista"],
         how="left"
     )
 
+    # Crear etiqueta de rol único por equipo
     df["equipo_rol"] = df["EQUIPO_NUM"].astype(str) + " " + df["rol"]
 
-    # Agrupación
+    # Mapeo de etiquetas y categorías
+    df["estado_label"] = df["estado_carpeta"].map(ESTADOS_RENOM)
+    df["estado_label"] = pd.Categorical(
+        df["estado_label"],
+        categories=[ESTADOS_RENOM[e] for e in ESTADOS_ORDEN],
+        ordered=True
+    )
+
+    # Agrupación por analista (equipo_rol)
     grp = (
-        df.groupby(["EQUIPO_NUM", "equipo_rol", "estado_carpeta", "supervisor", "analista"])
+        df.groupby(["equipo_rol", "estado_label", "EQUIPO_NUM", "analista", "supervisor"])
         .size()
         .reset_index(name="cantidad")
     )
 
-    grp["estado_label"] = grp["estado_carpeta"].map(ESTADOS_RENOM)
-    grp["estado_label"] = pd.Categorical(
-        grp["estado_label"],
-        categories=[ESTADOS_RENOM[e] for e in ESTADOS_ORDEN],
-        ordered=True
-    )
-    grp = grp.sort_values(["EQUIPO_NUM", "equipo_rol", "estado_label"]).reset_index(drop=True)
+    fig = go.Figure()
 
-    # Gráfico
-    fig = px.bar(
-        grp,
-        x="equipo_rol",
-        y="cantidad",
-        color="estado_label",
-        barmode="stack",
-        color_discrete_sequence=COLOR_PALETTE,
-        category_orders={"estado_label": [ESTADOS_RENOM[e] for e in ESTADOS_ORDEN]},
-        title="<b>Estados por EQUIPO — Vista: Analistas</b>",
-    )
+    for estado in [ESTADOS_RENOM[e] for e in ESTADOS_ORDEN]:
+        subset = grp[grp["estado_label"] == estado]
+        fig.add_trace(
+            go.Bar(
+                x=subset["equipo_rol"],
+                y=subset["cantidad"],
+                name=estado,
+                customdata=np.stack([
+                    subset["EQUIPO_NUM"],
+                    subset["analista"],
+                    subset["supervisor"],
+                    subset["estado_label"]
+                ], axis=-1),
+                hovertemplate="<b>Equipo:</b> %{customdata[0]}<br>"
+                              "<b>Analista:</b> %{customdata[1]}<br>"
+                              "<b>Supervisor:</b> %{customdata[2]}<br>"
+                              "<b>Estado:</b> %{customdata[3]}<br>"
+                              "<b>Cantidad:</b> %{y}<extra></extra>",
+            )
+        )
 
-    # Etiquetas: solo mostrar número de equipo en eje x
+    # Mostrar solo el número de equipo en el eje x
     x_vals = grp["equipo_rol"].unique()
     x_labels = [v.split()[0] for v in x_vals]
 
     fig.update_layout(
-        xaxis=dict(
-            tickmode="array",
-            tickvals=x_vals,
-            ticktext=x_labels
-        ),
+        barmode="stack",
+        title="<b>Estados por EQUIPO — Vista: Analistas</b>",
         xaxis_title="Equipo",
         yaxis_title="Cantidad",
         font=dict(family="Arial", size=12),
         title_font=dict(size=18, color="#1F9924", family="Arial"),
         plot_bgcolor="white",
-        margin=dict(l=30, r=30, t=60, b=70),
         legend_title_text="Estado",
         height=500,
+        margin=dict(l=30, r=30, t=60, b=70),
         bargap=0.2,
-    )
-
-    # Tooltip personalizado con datos correctos
-    fig.update_traces(
-        hovertemplate="<b>Equipo:</b> %{customdata[0]}<br>"
-                      "<b>Supervisor:</b> %{customdata[1]}<br>"
-                      "<b>Analista:</b> %{customdata[2]}<br>"
-                      "<b>Estado:</b> %{customdata[3]}<br>"
-                      "<b>Cantidad:</b> %{y}<extra></extra>",
-        customdata=np.stack([
-            grp["EQUIPO_NUM"].astype(str),
-            grp["supervisor"].fillna(""),
-            grp["analista"].fillna(""),
-            grp["estado_label"].astype(str)
-        ], axis=-1)
+        colorway=COLOR_PALETTE,
+        xaxis=dict(
+            tickmode="array",
+            tickvals=x_vals,
+            ticktext=x_labels
+        )
     )
 
     return fig
