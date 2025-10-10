@@ -516,7 +516,7 @@ def categorias_por_sujeto(df_base: pd.DataFrame, modulo: str, dias_habiles: int)
     """Devuelve DataFrame con columnas: sujeto (analista/supervisor/auditor), Categoria y además EQUIPO para posible cruce.""" 
     dfm = prepara_df_modulo(df_base, modulo) 
     per_subject = 34 if modulo == "Supervisores" else 17 
-    per_subject_meta = per_subject * dias_habiles 
+    per_subject_meta = per_subject * dias_habiles if modulo != "Equipos" else per_subject * dias_habiles * 6
     tab = tabla_resumen(dfm, modulo, per_subject_meta) 
     sujeto_col_cap = sujetos_col(modulo).capitalize() # Mapear equipo desde df_base 
     equipo_map = (df_base[[sujetos_col(modulo), "EQUIPO"]] .drop_duplicates() .rename(columns={sujetos_col(modulo): sujeto_col_cap})) 
