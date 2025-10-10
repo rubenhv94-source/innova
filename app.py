@@ -316,7 +316,7 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> p
     if df_mod.empty or col not in df_mod.columns:
         return pd.DataFrame(columns=["Categoria", col.capitalize(), "Analizadas", "Meta", "Faltantes"])
 
-    # Estados efectivos según módulo
+    # Estados válidos según módulo
     if modulo.lower() == "analistas":
         estados_efectivos = {"auditada", "aprobada", "calificada"}
     elif modulo.lower() == "supervisores":
@@ -326,11 +326,11 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> p
     else:
         estados_efectivos = set()
 
-    # Limpieza
+    # Limpieza y normalización
     df_mod = df_mod.dropna(subset=["estado_carpeta", col])
     df_mod["estado_carpeta"] = df_mod["estado_carpeta"].str.strip().str.lower()
 
-    # Agrupación
+    # Pivot principal: cuenta de carpetas por sujeto y estado
     pivot = (
         df_mod
         .groupby([col, "estado_carpeta"])
@@ -339,39 +339,34 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> p
         .reset_index()
     )
 
-    # Asegurar columnas de estado
+    # Asegurar todas las columnas de estados
     for estado in ESTADOS_ORDEN:
         if estado not in pivot.columns:
             pivot[estado] = 0
 
-    # Calcular analizadas
+    # Cálculos
     pivot["Analizadas"] = pivot[[e for e in ESTADOS_ORDEN if e in estados_efectivos]].sum(axis=1)
+    pivot["Meta"] = per_subject_meta
+    pivot["Faltantes"] = pivot["Meta"] - pivot["Analizadas"]
+    pivot["Categoria"] = pivot["Faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
 
-    # Si no es módulo "equipos", calcular métricas adicionales
-    if modulo.lower() != "equipos":
-        pivot["Meta"] = per_subject_meta
-        pivot["Faltantes"] = pivot["Meta"] - pivot["Analizadas"]
-        pivot["Categoria"] = pivot["Faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
+    # Columnas finales
+    columnas_estado = ESTADOS_ORDEN
+    columnas_finales = [col] + columnas_estado + ["Analizadas", "Meta", "Faltantes", "Categoria"]
 
-        columnas_finales = [col] + ESTADOS_ORDEN + ["Analizadas", "Meta", "Faltantes", "Categoria"]
-    else:
-        columnas_finales = [col] + ESTADOS_ORDEN + ["Analizadas", "Categoria"]
-
+    # Selección final
     out = pivot[columnas_finales]
 
-    # Ordenar por categoría si existe
+    # Categorías ordenadas
+    categorias = ["Al día", "Atraso normal", "Atraso medio", "Atraso alto"]
     if "Categoria" in out.columns:
-        categorias = ["Al día", "Atraso normal", "Atraso medio", "Atraso alto"]
         out["Categoria"] = pd.Categorical(out["Categoria"], categories=categorias, ordered=True)
         out = out.sort_values(["Categoria", col], ascending=[True, True])
     else:
         out = out.sort_values(col)
 
-    # Renombrar columnas con nombres legibles
-    out = out.rename(columns={
-        col: col.capitalize(),
-        **{e: ESTADOS_RENOM.get(e, e) for e in ESTADOS_ORDEN}
-    })
+    # Renombrar columnas (estados homologados)
+    out = out.rename(columns={col: col.capitalize(), **{e: ESTADOS_RENOM.get(e, e) for e in columnas_estado}})
 
     return out
 
