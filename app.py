@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 import plotly.io as pio
 from datetime import datetime, date, timedelta
 import math
-
+from typing import Union
 
 # ============ CONFIG VISUAL ============
 pio.templates.default = "seaborn"
