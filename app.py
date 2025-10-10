@@ -761,28 +761,28 @@ def modulo_vista(nombre_modulo: str):
             tmp = tmp_base.copy()
             tmp["rol"] = "S"
             tmp["equipo_rol"] = tmp["EQUIPO_NUM"].astype(str) + " " + tmp["rol"]
-    
-            # Consolidar por supervisor y estado
+        
+            # Agrupar por equipo y supervisor
+            sup_info = (
+                tmp[["EQUIPO_NUM", "supervisor"]]
+                .drop_duplicates()
+                .groupby("EQUIPO_NUM")["supervisor"]
+                .agg(lambda x: ', '.join(sorted(x.unique())))
+                .to_dict()
+            )
+        
             grp = (
-                tmp.groupby(["EQUIPO_NUM", "estado_carpeta", "supervisor"])
+                tmp.groupby(["EQUIPO_NUM", "estado_carpeta"])
                 .size()
                 .reset_index(name="cantidad")
             )
-    
-            # Si un equipo tiene varios supervisores, sumar totales por equipo y estado
-            # pero conservar el primer nombre del supervisor para tooltip
-            sup_info = grp.groupby("EQUIPO_NUM")["supervisor"].first().to_dict()
-            grp = grp.groupby(["EQUIPO_NUM", "estado_carpeta"], as_index=False)["cantidad"].sum()
             grp["supervisor"] = grp["EQUIPO_NUM"].map(sup_info)
-    
+        
             grp["estado_label"] = grp["estado_carpeta"].map(ESTADOS_RENOM)
             grp["estado_label"] = pd.Categorical(grp["estado_label"], categories=estado_cat, ordered=True)
             grp = grp.sort_values("EQUIPO_NUM")
-    
-            # --- Separación visual ---
             grp["xpos"] = grp["EQUIPO_NUM"] * 3
-            grp["xpos_label"] = grp["EQUIPO_NUM"].astype(str)
-    
+        
             fig_sup = px.bar(
                 grp,
                 x="xpos",
@@ -793,14 +793,12 @@ def modulo_vista(nombre_modulo: str):
                 barmode="stack",
                 title="<b>Estados por EQUIPO — Vista: Supervisor</b>",
             )
-    
-            # --- Hover personalizado ---
+        
             fig_sup.update_traces(
-                hovertemplate="Equipo %{customdata[0]}<br>Supervisor: %{customdata[1]}<br>Estado: %{customdata[2]}<br>Cantidad: %{y}<extra></extra>",
+                hovertemplate="Equipo %{customdata[0]}<br><b>Supervisor:</b> %{customdata[1]}<br><b>Estado:</b> %{customdata[2]}<br><b>Cantidad:</b> %{y}<extra></extra>",
                 customdata=np.stack([grp["EQUIPO_NUM"], grp["supervisor"], grp["estado_label"]], axis=-1),
             )
-    
-            # --- Etiquetas centradas bajo cada grupo ---
+        
             for eq in grp["EQUIPO_NUM"].unique():
                 fig_sup.add_annotation(
                     x=eq * 3,
@@ -811,8 +809,7 @@ def modulo_vista(nombre_modulo: str):
                     yref="paper",
                     font=dict(size=11, color="#333"),
                 )
-    
-            # --- Scroll dinámico ---
+        
             fig_sup.update_layout(
                 xaxis=dict(
                     title="Equipo",
@@ -828,17 +825,16 @@ def modulo_vista(nombre_modulo: str):
                 height=500,
                 width=max(1000, len(grp["EQUIPO_NUM"].unique()) * 80),
             )
-    
+        
             fig_sup.update_traces(marker_line_width=0)
             st.plotly_chart(fig_sup, use_container_width=False)
-    
+        
         # =======================================================
         # 👨‍💻 VISTA ANALISTAS
         # =======================================================
         with tab_ana:
             tmp = tmp_base.copy()
-    
-            # Crear asignación A1/A2
+        
             analistas_unicos = (
                 tmp[["EQUIPO_NUM", "analista", "supervisor"]]
                 .drop_duplicates()
@@ -846,30 +842,28 @@ def modulo_vista(nombre_modulo: str):
             )
             analistas_unicos["rol"] = analistas_unicos.groupby("EQUIPO_NUM").cumcount() + 1
             analistas_unicos["rol"] = "A" + analistas_unicos["rol"].astype(str)
-    
+        
             tmp = tmp.merge(
                 analistas_unicos[["EQUIPO_NUM", "analista", "rol", "supervisor"]],
                 on=["EQUIPO_NUM", "analista", "supervisor"],
                 how="left",
             )
-    
+        
             tmp["equipo_rol"] = tmp["EQUIPO_NUM"].astype(str) + " " + tmp["rol"]
-    
-            # 👉 Incluir 'rol' en el groupby
+        
             grp = (
                 tmp.groupby(["EQUIPO_NUM", "rol", "equipo_rol", "estado_carpeta", "supervisor", "analista"])
                 .size()
                 .reset_index(name="cantidad")
             )
-    
+        
             grp["estado_label"] = grp["estado_carpeta"].map(ESTADOS_RENOM)
             grp["estado_label"] = pd.Categorical(grp["estado_label"], categories=estado_cat, ordered=True)
             grp = grp.sort_values(["EQUIPO_NUM", "rol"])
-    
-            # --- Separación y posiciones ---
+        
             grp["xpos"] = grp["EQUIPO_NUM"] * 3 + grp["rol"].map({"A1": 0, "A2": 1}).fillna(0)
             grp["xpos_label"] = grp["EQUIPO_NUM"].astype(str) + " " + grp["rol"]
-    
+        
             fig_ana = px.bar(
                 grp,
                 x="xpos",
@@ -880,17 +874,15 @@ def modulo_vista(nombre_modulo: str):
                 barmode="stack",
                 title="<b>Estados por EQUIPO — Vista: Analistas</b>",
             )
-    
-            # --- Hover: supervisor + analista ---
+        
             fig_ana.update_traces(
-                hovertemplate="Equipo %{customdata[0]}<br>Supervisor: %{customdata[1]}<br>Analista: %{customdata[2]}<br>Estado: %{customdata[3]}<br>Cantidad: %{y}<extra></extra>",
+                hovertemplate="Equipo %{customdata[0]}<br><b>Supervisor:</b> %{customdata[1]}<br><b>Analista:</b> %{customdata[2]}<br><b>Estado:</b> %{customdata[3]}<br><b>Cantidad:</b> %{y}<extra></extra>",
                 customdata=np.stack(
                     [grp["EQUIPO_NUM"], grp["supervisor"], grp["analista"], grp["estado_label"]],
                     axis=-1
                 ),
             )
-    
-            # --- Etiquetas centradas bajo cada grupo ---
+        
             for eq in grp["EQUIPO_NUM"].unique():
                 fig_ana.add_annotation(
                     x=eq * 3 + 0.5,
@@ -901,8 +893,7 @@ def modulo_vista(nombre_modulo: str):
                     yref="paper",
                     font=dict(size=11, color="#333"),
                 )
-    
-            # --- Configuración de scroll horizontal ---
+        
             fig_ana.update_layout(
                 xaxis=dict(
                     title="Equipo",
@@ -918,7 +909,7 @@ def modulo_vista(nombre_modulo: str):
                 height=500,
                 width=max(1000, len(grp["EQUIPO_NUM"].unique()) * 80),
             )
-    
+        
             fig_ana.update_traces(marker_line_width=0)
             st.plotly_chart(fig_ana, use_container_width=False)
 
