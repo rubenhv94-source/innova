@@ -419,8 +419,8 @@ def grafico_estado_supervisor(df: pd.DataFrame):
 
     return fig
 
-def grafico_estado_analistas_solo_equipo(df: pd.DataFrame):
-    # Crear roles A1, A2 por equipo
+def grafico_estado_analistas(df: pd.DataFrame):
+    # Asignar rol A1, A2... por equipo
     analistas_unicos = (
         df[["EQUIPO_NUM", "analista", "supervisor"]]
         .drop_duplicates()
@@ -436,67 +436,57 @@ def grafico_estado_analistas_solo_equipo(df: pd.DataFrame):
     )
 
     df["equipo_rol"] = df["EQUIPO_NUM"].astype(str) + " " + df["rol"]
-    df["estado_label"] = df["estado_carpeta"].map(ESTADOS_RENOM)
-    df["estado_label"] = pd.Categorical(
-        df["estado_label"],
-        categories=[ESTADOS_RENOM[e] for e in ESTADOS_ORDEN],
-        ordered=True
-    )
 
-    # Agrupar por equipo_rol
+    # Agrupación
     grp = (
-        df.groupby(["equipo_rol", "estado_label", "supervisor", "analista", "EQUIPO_NUM"])
+        df.groupby(["EQUIPO_NUM", "equipo_rol", "estado_carpeta", "supervisor", "analista"])
         .size()
         .reset_index(name="cantidad")
     )
 
-    fig = go.Figure()
+    grp["estado_label"] = grp["estado_carpeta"].map(ESTADOS_RENOM)
+    grp["estado_label"] = pd.Categorical(
+        grp["estado_label"],
+        categories=[ESTADOS_RENOM[e] for e in ESTADOS_ORDEN],
+        ordered=True
+    )
+    grp = grp.sort_values(["EQUIPO_NUM", "equipo_rol", "estado_label"]).reset_index(drop=True)
 
-    for estado in [ESTADOS_RENOM[e] for e in ESTADOS_ORDEN]:
-        subset = grp[grp["estado_label"] == estado]
-
-        hovertext = (
-            "Equipo: " + subset["EQUIPO_NUM"].astype(str) +
-            "<br>Supervisor: " + subset["supervisor"].astype(str) +
-            "<br>Analista: " + subset["analista"].astype(str) +
-            "<br>Estado: " + subset["estado_label"].astype(str) +
-            "<br>Cantidad: " + subset["cantidad"].astype(str)
-        )
-
-        fig.add_trace(
-            go.Bar(
-                x=subset["equipo_rol"],
-                y=subset["cantidad"],
-                name=estado,
-                hovertext=hovertext,
-                hoverinfo="text"
-            )
-        )
-
-    # Etiquetas: solo número de equipo
-    x_vals = grp["equipo_rol"].unique()
-    x_labels = [v.split()[0] for v in x_vals]
-
-    fig.update_layout(
+    # Gráfico
+    fig = px.bar(
+        grp,
+        x="equipo_rol",
+        y="cantidad",
+        color="estado_label",
         barmode="stack",
+        color_discrete_sequence=COLOR_PALETTE,
+        category_orders={"estado_label": [ESTADOS_RENOM[e] for e in ESTADOS_ORDEN]},
         title="<b>Estados por EQUIPO — Vista: Analistas</b>",
+    )
+
+    # Tooltip corregido
+    fig.update_traces(
+        hovertemplate="<b>Equipo:</b> %{customdata[0]}<br>Supervisor: %{customdata[1]}<br>Analista: %{customdata[2]}<br>Estado: %{customdata[3]}<br>Cantidad: %{y}<extra></extra>",
+        customdata=np.stack([
+            grp["EQUIPO_NUM"],
+            grp["supervisor"].fillna(""),
+            grp["analista"].fillna(""),
+            grp["estado_label"].astype(str)
+        ], axis=-1)
+    )
+
+    # Layout
+    fig.update_layout(
         xaxis_title="Equipo",
         yaxis_title="Cantidad",
         font=dict(family="Arial", size=12),
         title_font=dict(size=18, color="#1F9924", family="Arial"),
         plot_bgcolor="white",
+        margin=dict(l=30, r=30, t=60, b=70),
         legend_title_text="Estado",
         height=500,
-        margin=dict(l=30, r=30, t=60, b=70),
         bargap=0.2,
-        colorway=COLOR_PALETTE,
-        xaxis=dict(
-            tickmode="array",
-            tickvals=x_vals,
-            ticktext=x_labels
-        )
     )
-
     return fig
 
 # ---------- utilidades de categorías globales (para filtro transversal) ----------
@@ -912,7 +902,7 @@ def modulo_vista(nombre_modulo: str):
         # 👨‍💻 VISTA ANALISTAS
         # =======================================================
         with tab_ana:
-            fig_ana = grafico_estado_analistas_solo_equipo(tmp_base)
+            fig_ana = grafico_estado_analistas(tmp_base)
             st.plotly_chart(fig_ana, use_container_width=True)
 
     else:
