@@ -420,22 +420,9 @@ def grafico_estado_supervisor(df: pd.DataFrame):
     return fig
 
 def grafico_estado_analistas(df: pd.DataFrame):
-    # Crear roles por equipo
-    analistas_unicos = (
-        df[["EQUIPO_NUM", "analista", "supervisor"]]
-        .drop_duplicates()
-        .sort_values(["EQUIPO_NUM", "analista"])
-    )
-    analistas_unicos["rol"] = analistas_unicos.groupby("EQUIPO_NUM").cumcount() + 1
-    analistas_unicos["rol"] = "A" + analistas_unicos["rol"].astype(str)
-
-    df = df.merge(
-        analistas_unicos[["EQUIPO_NUM", "analista", "rol", "supervisor"]],
-        on=["EQUIPO_NUM", "analista", "supervisor"],
-        how="left"
-    )
-
-    df["equipo_rol"] = df["EQUIPO_NUM"].astype(str) + " " + df["rol"]
+    # Preprocesamiento
+    df = df.copy()
+    df["estado_carpeta"] = df["estado_carpeta"].fillna("").str.lower()
     df["estado_label"] = df["estado_carpeta"].map(ESTADOS_RENOM)
     df["estado_label"] = pd.Categorical(
         df["estado_label"],
@@ -443,60 +430,58 @@ def grafico_estado_analistas(df: pd.DataFrame):
         ordered=True
     )
 
-    # Agrupar datos
-    grp = (
-        df.groupby(["equipo_rol", "estado_label", "EQUIPO_NUM", "analista", "supervisor"])
+    # Asegurar tipos
+    df["EQUIPO_NUM"] = pd.to_numeric(df["EQUIPO"], errors="coerce")
+    df = df.dropna(subset=["EQUIPO_NUM", "analista"])
+    df["EQUIPO_NUM"] = df["EQUIPO_NUM"].astype(int)
+
+    # Agrupación
+    grouped = (
+        df.groupby(["EQUIPO_NUM", "supervisor", "analista", "estado_label"])
         .size()
-        .reset_index(name="cantidad")
+        .unstack(fill_value=0)
+        .reset_index()
     )
 
-    # Crear figura
+    estado_cols = [col for col in grouped.columns if col not in ["EQUIPO_NUM", "supervisor", "analista"]]
+    
+    # Crear gráfico
     fig = go.Figure()
 
-    for estado in [ESTADOS_RENOM[e] for e in ESTADOS_ORDEN]:
-        subset = grp[grp["estado_label"] == estado]
-
+    for estado in estado_cols:
         fig.add_trace(
             go.Bar(
-                x=subset["equipo_rol"],
-                y=subset["cantidad"],
+                x=grouped["EQUIPO_NUM"].astype(str),
+                y=grouped[estado],
                 name=estado,
                 customdata=np.stack([
-                    subset["EQUIPO_NUM"],
-                    subset["supervisor"],
-                    subset["analista"],
-                    subset["estado_label"]
+                    grouped["EQUIPO_NUM"],
+                    grouped["supervisor"],
+                    grouped["analista"],
+                    [estado] * len(grouped),
+                    grouped[estado]
                 ], axis=-1),
                 hovertemplate="<b>Equipo:</b> %{customdata[0]}<br>"
                               "<b>Supervisor:</b> %{customdata[1]}<br>"
                               "<b>Analista:</b> %{customdata[2]}<br>"
                               "<b>Estado:</b> %{customdata[3]}<br>"
-                              "<b>Cantidad:</b> %{y}<extra></extra>",
+                              "<b>Cantidad:</b> %{customdata[4]}<extra></extra>",
             )
         )
 
-    # Solo mostrar número de equipo (sin rol) en eje X
-    x_vals = grp["equipo_rol"].unique()
-    x_labels = [x.split()[0] for x in x_vals]
-
     fig.update_layout(
         barmode="stack",
-        title="<b>Estados por EQUIPO — Vista: Analistas</b>",
+        title="<b>Distribución por Estado — Vista: Analistas</b>",
         xaxis_title="Equipo",
         yaxis_title="Cantidad",
         font=dict(family="Arial", size=12),
         title_font=dict(size=18, color="#1F9924", family="Arial"),
         plot_bgcolor="white",
         legend_title_text="Estado",
-        height=500,
+        height=600,
+        margin=dict(l=30, r=30, t=60, b=80),
         bargap=0.2,
         colorway=COLOR_PALETTE,
-        margin=dict(l=30, r=30, t=60, b=70),
-        xaxis=dict(
-            tickmode="array",
-            tickvals=x_vals,
-            ticktext=x_labels
-        )
     )
 
     return fig
