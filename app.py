@@ -352,6 +352,130 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> p
     out = out.rename(columns={col: col.capitalize(), **{e: ESTADOS_RENOM.get(e, e) for e in columnas_estado}})
     return out
 
+def grafico_estado_supervisor(df: pd.DataFrame):
+    sup_info = (
+        df[["EQUIPO_NUM", "supervisor"]]
+        .drop_duplicates()
+        .groupby("EQUIPO_NUM")["supervisor"]
+        .agg(lambda x: ', '.join(sorted(x.dropna().unique())))
+        .to_dict()
+    )
+
+    grp = (
+        df.groupby(["EQUIPO_NUM", "estado_carpeta"])
+        .size()
+        .reset_index(name="cantidad")
+    )
+
+    grp["supervisor"] = grp["EQUIPO_NUM"].map(sup_info)
+    grp["estado_label"] = grp["estado_carpeta"].map(ESTADOS_RENOM)
+    grp["estado_label"] = pd.Categorical(grp["estado_label"], categories=[ESTADOS_RENOM.get(e, e) for e in ESTADOS_ORDEN], ordered=True)
+    grp = grp.sort_values(["EQUIPO_NUM", "estado_label"]).reset_index(drop=True)
+
+    fig = px.bar(
+        grp,
+        x="EQUIPO_NUM",
+        y="cantidad",
+        color="estado_label",
+        barmode="stack",
+        color_discrete_sequence=COLOR_PALETTE,
+        category_orders={"estado_label": [ESTADOS_RENOM.get(e, e) for e in ESTADOS_ORDEN]},
+        title="<b>Estados por EQUIPO — Vista: Supervisor</b>",
+    )
+
+    fig.update_traces(
+        hovertemplate=(
+            "<b>Equipo:</b> %{x}<br>"
+            "<b>Supervisor:</b> %{customdata[0]}<br>"
+            "<b>Estado:</b> %{customdata[1]}<br>"
+            "<b>Cantidad:</b> %{y}<extra></extra>"
+        ),
+        customdata=np.stack([
+            grp["supervisor"].fillna(""),
+            grp["estado_label"].astype(str)
+        ], axis=-1)
+    )
+
+    fig.update_layout(
+        xaxis_title="Equipo",
+        yaxis_title="Cantidad",
+        font=dict(family="Arial", size=12),
+        title_font=dict(size=18, color="#1F9924", family="Arial"),
+        plot_bgcolor="white",
+        margin=dict(l=30, r=30, t=60, b=70),
+        legend_title_text="Estado",
+        height=500,
+        bargap=0.2,
+    )
+    return fig
+
+
+def grafico_estado_analistas(df: pd.DataFrame):
+    analistas_unicos = (
+        df[["EQUIPO_NUM", "analista", "supervisor"]]
+        .drop_duplicates()
+        .sort_values(["EQUIPO_NUM", "analista"])
+    )
+    analistas_unicos["rol"] = analistas_unicos.groupby("EQUIPO_NUM").cumcount() + 1
+    analistas_unicos["rol"] = "A" + analistas_unicos["rol"].astype(str)
+
+    df = df.merge(
+        analistas_unicos[["EQUIPO_NUM", "analista", "rol", "supervisor"]],
+        on=["EQUIPO_NUM", "analista", "supervisor"],
+        how="left"
+    )
+
+    df["equipo_rol"] = df["EQUIPO_NUM"].astype(str) + " " + df["rol"]
+
+    grp = (
+        df.groupby(["equipo_rol", "estado_carpeta", "supervisor", "analista"])
+        .size()
+        .reset_index(name="cantidad")
+    )
+
+    grp["estado_label"] = grp["estado_carpeta"].map(ESTADOS_RENOM)
+    grp["estado_label"] = pd.Categorical(grp["estado_label"], categories=[ESTADOS_RENOM.get(e, e) for e in ESTADOS_ORDEN], ordered=True)
+    grp = grp.sort_values(["equipo_rol", "estado_label"]).reset_index(drop=True)
+
+    fig = px.bar(
+        grp,
+        x="equipo_rol",
+        y="cantidad",
+        color="estado_label",
+        barmode="stack",
+        color_discrete_sequence=COLOR_PALETTE,
+        category_orders={"estado_label": [ESTADOS_RENOM.get(e, e) for e in ESTADOS_ORDEN]},
+        title="<b>Estados por EQUIPO — Vista: Analistas</b>",
+    )
+
+    fig.update_traces(
+        hovertemplate=(
+            "<b>Equipo/Rol:</b> %{x}<br>"
+            "<b>Supervisor:</b> %{customdata[0]}<br>"
+            "<b>Analista:</b> %{customdata[1]}<br>"
+            "<b>Estado:</b> %{customdata[2]}<br>"
+            "<b>Cantidad:</b> %{y}<extra></extra>"
+        ),
+        customdata=np.stack([
+            grp["supervisor"].fillna(""),
+            grp["analista"].fillna(""),
+            grp["estado_label"].astype(str)
+        ], axis=-1)
+    )
+
+    fig.update_layout(
+        xaxis_title="Equipo / Rol",
+        yaxis_title="Cantidad",
+        font=dict(family="Arial", size=12),
+        title_font=dict(size=18, color="#1F9924", family="Arial"),
+        plot_bgcolor="white",
+        margin=dict(l=30, r=30, t=60, b=70),
+        legend_title_text="Estado",
+        height=500,
+        bargap=0.2,
+    )
+    return fig
+
 # ---------- utilidades de categorías globales (para filtro transversal) ----------
 def categorias_por_sujeto(df_base: pd.DataFrame, modulo: str, dias_habiles: int) -> pd.DataFrame:
     """Devuelve DataFrame con columnas: sujeto (analista/supervisor/auditor), Categoria y además EQUIPO para posible cruce."""
@@ -737,7 +861,7 @@ def modulo_vista(nombre_modulo: str):
                 with cx3: custom_metric("👨‍💻 Analista2", analista_label_2)
                 with cx4: custom_metric("🕵️‍♀️ Supervisor", supervisor_label)
     
-    # b) Barras por estado para cada EQUIPO (tabs, separación visual, etiquetas y scroll horizontal)
+    # b) Barras por estado para cada EQUIPO (gráficos modulares y corregidos)
     if {"EQUIPO", "estado_carpeta"}.issubset(dfm.columns):
         st.subheader("📊 Estados por EQUIPO")
     
@@ -758,141 +882,16 @@ def modulo_vista(nombre_modulo: str):
         # 🕵️ VISTA SUPERVISOR
         # =======================================================
         with tab_sup:
-            tmp = tmp_base.copy()
-        
-            # Agrupar por EQUIPO y estado
-            sup_info = (
-                tmp[["EQUIPO_NUM", "supervisor"]]
-                .drop_duplicates()
-                .groupby("EQUIPO_NUM")["supervisor"]
-                .agg(lambda x: ', '.join(sorted(x.dropna().unique())))
-                .to_dict()
-            )
-        
-            grp = (
-                tmp.groupby(["EQUIPO_NUM", "estado_carpeta"])
-                .size()
-                .reset_index(name="cantidad")
-            )
-        
-            grp["supervisor"] = grp["EQUIPO_NUM"].map(sup_info)
-            grp["estado_label"] = grp["estado_carpeta"].map(ESTADOS_RENOM)
-            grp["estado_label"] = pd.Categorical(grp["estado_label"], categories=estado_cat, ordered=True)
-            grp = grp.sort_values(["EQUIPO_NUM", "estado_label"]).reset_index(drop=True)
-        
-            fig_sup = px.bar(
-                grp,
-                x="EQUIPO_NUM",
-                y="cantidad",
-                color="estado_label",
-                barmode="stack",
-                color_discrete_sequence=COLOR_PALETTE,
-                category_orders={"estado_label": estado_cat},
-                title="<b>Estados por EQUIPO — Vista: Supervisor</b>",
-            )
-        
-            fig_sup.update_traces(
-                hovertemplate=(
-                    "Equipo %{x}<br>"
-                    "<b>Supervisor:</b> %{customdata[0]}<br>"
-                    "<b>Estado:</b> %{customdata[1]}<br>"
-                    "<b>Cantidad:</b> %{y}<extra></extra>"
-                ),
-                customdata=np.stack([
-                    grp["supervisor"],
-                    grp["estado_label"]
-                ], axis=-1)
-            )
-        
-            fig_sup.update_layout(
-                xaxis_title="Equipo",
-                yaxis_title="Cantidad",
-                font=dict(family="Arial", size=12),
-                title_font=dict(size=18, color="#1F9924", family="Arial"),
-                plot_bgcolor="white",
-                margin=dict(l=30, r=30, t=60, b=70),
-                legend_title_text="Estado",
-                height=500,
-                bargap=0.2,
-            )
-        
-            fig_sup.update_traces(marker_line_width=0)
+            fig_sup = grafico_estado_supervisor(tmp_base)
             st.plotly_chart(fig_sup, use_container_width=True)
-
+    
         # =======================================================
         # 👨‍💻 VISTA ANALISTAS
         # =======================================================
         with tab_ana:
-            tmp = tmp_base.copy()
-        
-            # Asignar rol por equipo (A1, A2, ...)
-            analistas_unicos = (
-                tmp[["EQUIPO_NUM", "analista", "supervisor"]]
-                .drop_duplicates()
-                .sort_values(["EQUIPO_NUM", "analista"])
-            )
-            analistas_unicos["rol"] = analistas_unicos.groupby("EQUIPO_NUM").cumcount() + 1
-            analistas_unicos["rol"] = "A" + analistas_unicos["rol"].astype(str)
-        
-            tmp = tmp.merge(
-                analistas_unicos[["EQUIPO_NUM", "analista", "rol", "supervisor"]],
-                on=["EQUIPO_NUM", "analista", "supervisor"],
-                how="left"
-            )
-        
-            tmp["equipo_rol"] = tmp["EQUIPO_NUM"].astype(str) + " " + tmp["rol"]
-        
-            grp = (
-                tmp.groupby(["equipo_rol", "estado_carpeta", "supervisor", "analista"])
-                .size()
-                .reset_index(name="cantidad")
-            )
-        
-            grp["estado_label"] = grp["estado_carpeta"].map(ESTADOS_RENOM)
-            grp["estado_label"] = pd.Categorical(grp["estado_label"], categories=estado_cat, ordered=True)
-            grp = grp.sort_values(["equipo_rol", "estado_label"]).reset_index(drop=True)
-        
-            fig_ana = px.bar(
-                grp,
-                x="equipo_rol",
-                y="cantidad",
-                color="estado_label",
-                barmode="stack",
-                color_discrete_sequence=COLOR_PALETTE,
-                category_orders={"estado_label": estado_cat},
-                title="<b>Estados por EQUIPO — Vista: Analistas</b>",
-            )
-        
-            fig_ana.update_traces(
-                hovertemplate=(
-                    "Equipo/Rol: %{x}<br>"
-                    "<b>Supervisor:</b> %{customdata[0]}<br>"
-                    "<b>Analista:</b> %{customdata[1]}<br>"
-                    "<b>Estado:</b> %{customdata[2]}<br>"
-                    "<b>Cantidad:</b> %{y}<extra></extra>"
-                ),
-                customdata=np.stack([
-                    grp["supervisor"],
-                    grp["analista"],
-                    grp["estado_label"]
-                ], axis=-1)
-            )
-        
-            fig_ana.update_layout(
-                xaxis_title="Equipo / Rol",
-                yaxis_title="Cantidad",
-                font=dict(family="Arial", size=12),
-                title_font=dict(size=18, color="#1F9924", family="Arial"),
-                plot_bgcolor="white",
-                margin=dict(l=30, r=30, t=60, b=70),
-                legend_title_text="Estado",
-                height=500,
-                bargap=0.2,
-            )
-        
-            fig_ana.update_traces(marker_line_width=0)
+            fig_ana = grafico_estado_analistas(tmp_base)
             st.plotly_chart(fig_ana, use_container_width=True)
-
+    
     else:
         st.warning("No hay datos válidos de EQUIPO/estado para graficar.")
 
