@@ -406,7 +406,7 @@ def grafico_estado_supervisor(df: pd.DataFrame):
         barmode="stack",
         title="<b>Estados por EQUIPO — Vista: Supervisor</b>",
         xaxis_title="Equipo",
-        yaxis_title="Cantidad",
+        yaxis=dict(title="Cantidad", range=[0, 1000],),
         font=dict(family="Arial", size=12),
         title_font=dict(size=18, color="#1F9924", family="Arial"),
         plot_bgcolor="white",
@@ -420,23 +420,6 @@ def grafico_estado_supervisor(df: pd.DataFrame):
     return fig
 
 def grafico_estado_analistas(df: pd.DataFrame):
-    import plotly.graph_objects as go
-    import numpy as np
-
-    ESTADOS_RENOM = {
-        "": "Por asignar",
-        "asignada": "0. asignada",
-        "devuelta": "1. devuelta",
-        "calificada": "2. calificada",
-        "aprobada": "3. aprobada",
-        "auditada": "4. auditada"
-    }
-
-    COLOR_PALETTE = [
-        "#E8F6F3", "#A3E4D7", "#76D7C4",
-        "#48C9B0", "#1ABC9C", "#148F77"
-    ]
-
     # Asignar roles por equipo: A1, A2...
     analistas_unicos = (
         df[["EQUIPO_NUM", "analista"]]
@@ -492,7 +475,7 @@ def grafico_estado_analistas(df: pd.DataFrame):
         barmode="stack",
         title="<b>Estados por EQUIPO — Vista: Analistas</b>",
         xaxis_title="Equipo",
-        yaxis_title="Cantidad",
+        yaxis=dict(title="Cantidad", range=[0, 500],),
         font=dict(family="Arial", size=12),
         title_font=dict(size=18, color="#1F9924", family="Arial"),
         plot_bgcolor="white",
