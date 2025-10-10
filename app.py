@@ -49,7 +49,7 @@ st.markdown("""
 # ============ DATOS ============
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVxG-bO1D5mkgUFCU35drRV4tyXT9aRaW6q4zzWGa9nFAqkLVdZxaIjwD1cEMJIAXuI4xTBlhHS1og/pub?gid=991630809&single=true&output=csv"
 
-@st.cache_data
+@st.cache_data(ttl=600)
 def cargar_datos(url: str) -> pd.DataFrame:
     df = pd.read_csv(url, dtype=str)
     for c in ["analista", "supervisor", "auditor", "estado_carpeta", "profesional", "nivel", "EQUIPO"]:
@@ -410,6 +410,11 @@ if seleccion != pagina_actual:
 with st.sidebar:
     st.header("🔎 Filtros")
 
+    # Botón para recargar datos desde Google Sheets (limpia la caché)
+    if st.button("🔄 Recargar datos", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
+    
     # Inicializar estados si no existen
     for k in ["sel_prof", "sel_sup", "sel_ana", "sel_estado", "sel_nivel", "sel_categoria"]:
         if k not in st.session_state:
