@@ -420,23 +420,12 @@ def grafico_estado_supervisor(df: pd.DataFrame):
     return fig
 
 def grafico_estado_analistas(df: pd.DataFrame):
-    # Preprocesamiento
-    df = df.copy()
-    df["estado_carpeta"] = df["estado_carpeta"].fillna("").str.lower()
-    df["estado_label"] = df["estado_carpeta"].map(ESTADOS_RENOM)
-    df["estado_label"] = pd.Categorical(
-        df["estado_label"],
-        categories=[ESTADOS_RENOM[e] for e in ESTADOS_ORDEN],
-        ordered=True
-    )
+    import plotly.graph_objects as go
+    import numpy as np
 
-    df["EQUIPO_NUM"] = pd.to_numeric(df["EQUIPO"], errors="coerce")
-    df = df.dropna(subset=["EQUIPO_NUM", "analista"])
-    df["EQUIPO_NUM"] = df["EQUIPO_NUM"].astype(int)
-
-    # Asignar rol A1, A2... por equipo
+    # Asignar roles por equipo: A1, A2...
     analistas_unicos = (
-        df[["EQUIPO_NUM", "analista", "supervisor"]]
+        df[["EQUIPO_NUM", "analista"]]
         .drop_duplicates()
         .sort_values(["EQUIPO_NUM", "analista"])
     )
@@ -444,22 +433,28 @@ def grafico_estado_analistas(df: pd.DataFrame):
     analistas_unicos["rol"] = "A" + analistas_unicos["rol"].astype(str)
 
     df = df.merge(
-        analistas_unicos[["EQUIPO_NUM", "analista", "rol", "supervisor"]],
-        on=["EQUIPO_NUM", "analista", "supervisor"],
+        analistas_unicos,
+        on=["EQUIPO_NUM", "analista"],
         how="left"
     )
 
     df["equipo_rol"] = df["EQUIPO_NUM"].astype(str) + " " + df["rol"]
 
-    # Agrupación
+    # Agrupar y pivotear
     grouped = (
-        df.groupby(["EQUIPO_NUM", "equipo_rol", "supervisor", "analista", "estado_label"])
+        df.groupby(["EQUIPO_NUM", "analista", "equipo_rol", "estado_carpeta"])
         .size()
-        .unstack(fill_value=0)
-        .reset_index()
+        .reset_index(name="cantidad")
     )
 
-    estado_cols = [col for col in grouped.columns if col not in ["EQUIPO_NUM", "equipo_rol", "supervisor", "analista"]]
+    pivot = grouped.pivot_table(
+        index=["EQUIPO_NUM", "analista", "equipo_rol"],
+        columns="estado_carpeta",
+        values="cantidad",
+        fill_value=0
+    ).reset_index()
+
+    estado_cols = [col for col in pivot.columns if col not in ["EQUIPO_NUM", "analista", "equipo_rol"]]
 
     # Crear gráfico
     fig = go.Figure()
@@ -467,42 +462,35 @@ def grafico_estado_analistas(df: pd.DataFrame):
     for estado in estado_cols:
         fig.add_trace(
             go.Bar(
-                x=grouped["equipo_rol"],
-                y=grouped[estado],
+                x=pivot["equipo_rol"],
+                y=pivot[estado],
                 name=estado,
                 customdata=np.stack([
-                    grouped["EQUIPO_NUM"],
-                    grouped["supervisor"],
-                    grouped["analista"],
-                    [estado] * len(grouped),
-                    grouped[estado]
+                    pivot["analista"],
+                    [estado] * len(pivot),
+                    pivot[estado]
                 ], axis=-1),
-                hovertemplate="<b>Equipo:</b> %{customdata[0]}<br>"
-                              "<b>Supervisor:</b> %{customdata[1]}<br>"
-                              "<b>Analista:</b> %{customdata[2]}<br>"
-                              "<b>Estado:</b> %{customdata[3]}<br>"
-                              "<b>Cantidad:</b> %{customdata[4]}<extra></extra>",
+                hovertemplate="<b>A:</b> %{customdata[0]}<br><b>E:</b> %{customdata[1]}<br><b>C:</b> %{customdata[2]}<extra></extra>",
             )
         )
 
-    # Layout con etiquetas más limpias
+    # Layout
     fig.update_layout(
         barmode="stack",
-        title="<b>Distribución por Estado — Vista: Analistas</b>",
+        title="<b>Estados por EQUIPO — Vista: Analistas</b>",
         xaxis_title="Equipo",
         yaxis_title="Cantidad",
         font=dict(family="Arial", size=12),
         title_font=dict(size=18, color="#1F9924", family="Arial"),
         plot_bgcolor="white",
         legend_title_text="Estado",
-        height=600,
-        margin=dict(l=30, r=30, t=60, b=80),
+        height=500,
+        margin=dict(l=30, r=30, t=60, b=70),
         bargap=0.2,
-        colorway=COLOR_PALETTE,
         xaxis=dict(
-            tickmode='array',
-            tickvals=grouped["equipo_rol"],
-            ticktext=grouped["EQUIPO_NUM"].astype(str),
+            tickmode="array",
+            tickvals=pivot["equipo_rol"],
+            ticktext=pivot["EQUIPO_NUM"].astype(str)
         )
     )
 
