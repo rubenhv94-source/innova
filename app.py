@@ -309,7 +309,7 @@ def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
                       paper_bgcolor="#ffffff", font={"family": "Arial", "color": "#1a1a1a"})
     return fig
 
-def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> pd.DataFrame:
+def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: Union[int, dict]) -> pd.DataFrame:
     col = sujetos_col(modulo)
 
     # Validación básica
@@ -344,28 +344,38 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> p
         if estado not in pivot.columns:
             pivot[estado] = 0
 
-    # Cálculos
+    # Cálculo de analizadas
     pivot["Analizadas"] = pivot[[e for e in ESTADOS_ORDEN if e in estados_efectivos]].sum(axis=1)
-    pivot["Meta"] = per_subject_meta
+
+    # Asignar meta personalizada o fija
+    if isinstance(per_subject_meta, dict):
+        pivot["Meta"] = pivot[col].map(per_subject_meta).fillna(0).astype(int)
+    else:
+        pivot["Meta"] = per_subject_meta
+
     pivot["Faltantes"] = pivot["Meta"] - pivot["Analizadas"]
-    pivot["Categoria"] = pivot["Faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
+
+    # Categoría (si no es Equipos)
+    if modulo.lower() != "equipos":
+        pivot["Categoria"] = pivot["Faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
 
     # Columnas finales
     columnas_estado = ESTADOS_ORDEN
-    columnas_finales = [col] + columnas_estado + ["Analizadas", "Meta", "Faltantes", "Categoria"]
+    columnas_finales = [col] + columnas_estado + ["Analizadas", "Meta", "Faltantes"]
+    if "Categoria" in pivot.columns:
+        columnas_finales.append("Categoria")
 
-    # Selección final
     out = pivot[columnas_finales]
 
-    # Categorías ordenadas
-    categorias = ["Al día", "Atraso normal", "Atraso medio", "Atraso alto"]
+    # Orden y etiquetas
     if "Categoria" in out.columns:
+        categorias = ["Al día", "Atraso normal", "Atraso medio", "Atraso alto"]
         out["Categoria"] = pd.Categorical(out["Categoria"], categories=categorias, ordered=True)
         out = out.sort_values(["Categoria", col], ascending=[True, True])
     else:
         out = out.sort_values(col)
 
-    # Renombrar columnas (estados homologados)
+    # Renombrar columnas (estados)
     out = out.rename(columns={col: col.capitalize(), **{e: ESTADOS_RENOM.get(e, e) for e in columnas_estado}})
 
     return out
@@ -513,22 +523,55 @@ def grafico_estado_analistas(df: pd.DataFrame):
 
 # ---------- utilidades de categorías globales (para filtro transversal) ----------
 def categorias_por_sujeto(df_base: pd.DataFrame, modulo: str, dias_habiles: int) -> pd.DataFrame:
-    """Devuelve DataFrame con columnas: sujeto (analista/supervisor/auditor), Categoria y además EQUIPO para posible cruce.""" 
-    dfm = prepara_df_modulo(df_base, modulo) 
+    """Devuelve DataFrame con columnas: Sujeto, Categoria (si aplica), EQUIPO, Modulo."""
+
+    dfm = prepara_df_modulo(df_base, modulo)
+    sujeto_col = sujetos_col(modulo)
+    sujeto_col_cap = sujeto_col.capitalize()
+
+    # === Meta por sujeto ===
     if modulo == "Supervisores":
         per_subject = 34
+        per_subject_meta = per_subject * dias_habiles
+        tab = tabla_resumen(dfm, modulo, per_subject_meta)
+
     elif modulo == "Equipos":
-        per_subject = 646/3
-    else:
+        # Calcular número de equipos por auditor
+        equipos_por_auditor = (
+            dfm[["auditor", "EQUIPO"]]
+            .drop_duplicates()
+            .groupby("auditor")
+            .size()
+            .to_dict()
+        )
+
+        # Calcular meta individual por auditor
+        meta_por_auditor = {aud: equipos * 34 * dias_habiles for aud, equipos in equipos_por_auditor.items()}
+
+        # Crear DataFrame con meta por auditor
+        tab = tabla_resumen(dfm, modulo, meta_por_auditor)
+
+    else:  # Analistas
         per_subject = 17
-    per_subject_meta = per_subject * dias_habiles
-    tab = tabla_resumen(dfm, modulo, per_subject_meta) 
-    sujeto_col_cap = sujetos_col(modulo).capitalize() # Mapear equipo desde df_base 
-    equipo_map = (df_base[[sujetos_col(modulo), "EQUIPO"]] .drop_duplicates() .rename(columns={sujetos_col(modulo): sujeto_col_cap})) 
-    tab = tab.merge(equipo_map, on=sujeto_col_cap, how="left") 
-    tab["Modulo"] = modulo 
-    
-    return tab[[sujeto_col_cap, "Categoria", "EQUIPO", "Modulo"]].rename(columns={sujeto_col_cap: "Sujeto"})
+        per_subject_meta = per_subject * dias_habiles
+        tab = tabla_resumen(dfm, modulo, per_subject_meta)
+
+    # === Mapeo de equipo para agregar columna EQUIPO ===
+    equipo_map = (
+        df_base[[sujeto_col, "EQUIPO"]]
+        .drop_duplicates()
+        .rename(columns={sujeto_col: sujeto_col_cap})
+    )
+
+    tab = tab.merge(equipo_map, on=sujeto_col_cap, how="left")
+    tab["Modulo"] = modulo
+
+    # Columnas finales seguras
+    columnas_finales = [sujeto_col_cap, "EQUIPO", "Modulo"]
+    if "Categoria" in tab.columns:
+        columnas_finales.insert(1, "Categoria")
+
+    return tab[[c for c in columnas_finales if c in tab.columns]].rename(columns={sujeto_col_cap: "Sujeto"})
 
 def aplicar_filtro_categoria_transversal(df_in: pd.DataFrame, categoria_sel: str,
                                          cat_analistas: pd.DataFrame,
