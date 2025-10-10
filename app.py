@@ -518,20 +518,39 @@ def grafico_estado_analistas(df: pd.DataFrame):
 
 # ---------- utilidades de categorías globales (para filtro transversal) ----------
 def categorias_por_sujeto(df_base: pd.DataFrame, modulo: str, dias_habiles: int) -> pd.DataFrame:
-    """Devuelve DataFrame con columnas: sujeto (analista/supervisor/auditor), Categoria y además EQUIPO para posible cruce."""
+    """Devuelve DataFrame con columnas: sujeto (analista/supervisor/auditor), Categoria (si aplica) y EQUIPO para posible cruce."""
     dfm = prepara_df_modulo(df_base, modulo)
     per_subject = 34 if modulo == "Supervisores" else 17
     per_subject_meta = per_subject * dias_habiles
+
     tab = tabla_resumen(dfm, modulo, per_subject_meta)
     sujeto_col_cap = sujetos_col(modulo).capitalize()
 
-    # Mapear equipo desde df_base
-    equipo_map = (df_base[[sujetos_col(modulo), "EQUIPO"]]
-                  .drop_duplicates()
-                  .rename(columns={sujetos_col(modulo): sujeto_col_cap}))
+    # Mapeo de equipo desde df_base
+    equipo_map = (
+        df_base[[sujetos_col(modulo), "EQUIPO"]]
+        .drop_duplicates()
+        .rename(columns={sujetos_col(modulo): sujeto_col_cap})
+    )
+
+    # Merge del equipo
     tab = tab.merge(equipo_map, on=sujeto_col_cap, how="left")
+
+    # Agregar módulo como columna
     tab["Modulo"] = modulo
-    return tab[[sujeto_col_cap, "Categoria", "EQUIPO", "Modulo"]].rename(columns={sujeto_col_cap: "Sujeto"})
+
+    # Definir columnas base (según disponibilidad)
+    columnas_finales = [sujeto_col_cap, "EQUIPO", "Modulo"]
+    if "Categoria" in tab.columns:
+        columnas_finales.insert(1, "Categoria")  # Inserta después del sujeto
+
+    # Selección final segura
+    tab = tab[[c for c in columnas_finales if c in tab.columns]].copy()
+
+    # Renombrar la columna del sujeto a "Sujeto"
+    tab = tab.rename(columns={sujeto_col_cap: "Sujeto"})
+
+    return tab
 
 def aplicar_filtro_categoria_transversal(df_in: pd.DataFrame, categoria_sel: str,
                                          cat_analistas: pd.DataFrame,
