@@ -430,8 +430,8 @@ def grafico_estado_analistas(df: pd.DataFrame):
     analistas_unicos["rol"] = "A" + analistas_unicos["rol"].astype(str)
 
     df = df.merge(
-        analistas_unicos[["EQUIPO_NUM", "analista", "rol"]],
-        on=["EQUIPO_NUM", "analista"],
+        analistas_unicos[["EQUIPO_NUM", "analista", "rol", "supervisor"]],
+        on=["EQUIPO_NUM", "analista", "supervisor"],
         how="left"
     )
 
@@ -443,38 +443,41 @@ def grafico_estado_analistas(df: pd.DataFrame):
         ordered=True
     )
 
+    # Agrupar datos
     grp = (
         df.groupby(["equipo_rol", "estado_label", "EQUIPO_NUM", "analista", "supervisor"])
         .size()
         .reset_index(name="cantidad")
     )
 
+    # Crear figura
     fig = go.Figure()
 
     for estado in [ESTADOS_RENOM[e] for e in ESTADOS_ORDEN]:
         subset = grp[grp["estado_label"] == estado]
-
-        hovertext = (
-            "Equipo: " + subset["EQUIPO_NUM"].astype(str) +
-            "<br>Analista: " + subset["analista"].astype(str) +
-            "<br>Supervisor: " + subset["supervisor"].astype(str) +
-            "<br>Estado: " + subset["estado_label"].astype(str) +
-            "<br>Cantidad: " + subset["cantidad"].astype(str)
-        )
 
         fig.add_trace(
             go.Bar(
                 x=subset["equipo_rol"],
                 y=subset["cantidad"],
                 name=estado,
-                hovertext=hovertext,
-                hoverinfo="text"
+                customdata=np.stack([
+                    subset["EQUIPO_NUM"],
+                    subset["supervisor"],
+                    subset["analista"],
+                    subset["estado_label"]
+                ], axis=-1),
+                hovertemplate="<b>Equipo:</b> %{customdata[0]}<br>"
+                              "<b>Supervisor:</b> %{customdata[1]}<br>"
+                              "<b>Analista:</b> %{customdata[2]}<br>"
+                              "<b>Estado:</b> %{customdata[3]}<br>"
+                              "<b>Cantidad:</b> %{y}<extra></extra>",
             )
         )
 
-    # Solo mostrar número del equipo en el eje x
+    # Solo mostrar número de equipo (sin rol) en eje X
     x_vals = grp["equipo_rol"].unique()
-    x_labels = [v.split()[0] for v in x_vals]
+    x_labels = [x.split()[0] for x in x_vals]
 
     fig.update_layout(
         barmode="stack",
