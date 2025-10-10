@@ -464,19 +464,16 @@ def grafico_estado_analistas(df: pd.DataFrame):
         title="<b>Estados por EQUIPO — Vista: Analistas</b>",
     )
 
-    # Tooltip corregido
-    fig.update_traces(
-        hovertemplate="<b>Equipo:</b> %{customdata[0]}<br>Supervisor: %{customdata[1]}<br>Analista: %{customdata[2]}<br>Estado: %{customdata[3]}<br>Cantidad: %{y}<extra></extra>",
-        customdata=np.stack([
-            grp["EQUIPO_NUM"],
-            grp["supervisor"].fillna(""),
-            grp["analista"].fillna(""),
-            grp["estado_label"].astype(str)
-        ], axis=-1)
-    )
+    # Etiquetas: solo mostrar número de equipo en eje x
+    x_vals = grp["equipo_rol"].unique()
+    x_labels = [v.split()[0] for v in x_vals]
 
-    # Layout
     fig.update_layout(
+        xaxis=dict(
+            tickmode="array",
+            tickvals=x_vals,
+            ticktext=x_labels
+        ),
         xaxis_title="Equipo",
         yaxis_title="Cantidad",
         font=dict(family="Arial", size=12),
@@ -487,6 +484,22 @@ def grafico_estado_analistas(df: pd.DataFrame):
         height=500,
         bargap=0.2,
     )
+
+    # Tooltip personalizado con datos correctos
+    fig.update_traces(
+        hovertemplate="<b>Equipo:</b> %{customdata[0]}<br>"
+                      "<b>Supervisor:</b> %{customdata[1]}<br>"
+                      "<b>Analista:</b> %{customdata[2]}<br>"
+                      "<b>Estado:</b> %{customdata[3]}<br>"
+                      "<b>Cantidad:</b> %{y}<extra></extra>",
+        customdata=np.stack([
+            grp["EQUIPO_NUM"].astype(str),
+            grp["supervisor"].fillna(""),
+            grp["analista"].fillna(""),
+            grp["estado_label"].astype(str)
+        ], axis=-1)
+    )
+
     return fig
 
 # ---------- utilidades de categorías globales (para filtro transversal) ----------
