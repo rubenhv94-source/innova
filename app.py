@@ -759,15 +759,13 @@ def modulo_vista(nombre_modulo: str):
         # =======================================================
         with tab_sup:
             tmp = tmp_base.copy()
-            tmp["rol"] = "S"
-            tmp["equipo_rol"] = tmp["EQUIPO_NUM"].astype(str) + " " + tmp["rol"]
         
-            # Agrupar por equipo y supervisor
+            # Agrupar por EQUIPO y estado
             sup_info = (
                 tmp[["EQUIPO_NUM", "supervisor"]]
                 .drop_duplicates()
                 .groupby("EQUIPO_NUM")["supervisor"]
-                .agg(lambda x: ', '.join(sorted(x.unique())))
+                .agg(lambda x: ', '.join(sorted(x.dropna().unique())))
                 .to_dict()
             )
         
@@ -776,48 +774,38 @@ def modulo_vista(nombre_modulo: str):
                 .size()
                 .reset_index(name="cantidad")
             )
-            grp["supervisor"] = grp["EQUIPO_NUM"].map(sup_info)
         
+            grp["supervisor"] = grp["EQUIPO_NUM"].map(sup_info)
             grp["estado_label"] = grp["estado_carpeta"].map(ESTADOS_RENOM)
             grp["estado_label"] = pd.Categorical(grp["estado_label"], categories=estado_cat, ordered=True)
-            grp = grp.sort_values("EQUIPO_NUM")
-            grp["xpos"] = grp["EQUIPO_NUM"] * 3
+            grp = grp.sort_values(["EQUIPO_NUM", "estado_label"]).reset_index(drop=True)
         
             fig_sup = px.bar(
                 grp,
-                x="xpos",
+                x="EQUIPO_NUM",
                 y="cantidad",
                 color="estado_label",
-                category_orders={"estado_label": estado_cat},
-                color_discrete_sequence=COLOR_PALETTE,
                 barmode="stack",
+                color_discrete_sequence=COLOR_PALETTE,
+                category_orders={"estado_label": estado_cat},
                 title="<b>Estados por EQUIPO — Vista: Supervisor</b>",
             )
-            
-            grp = grp.reset_index(drop=True)
-            
+        
             fig_sup.update_traces(
-                hovertemplate="Equipo %{customdata[0]}<br><b>Supervisor:</b> %{customdata[1]}<br><b>Estado:</b> %{customdata[2]}<br><b>Cantidad:</b> %{y}<extra></extra>",
-                customdata=np.stack([grp["EQUIPO_NUM"], grp["supervisor"], grp["estado_label"]], axis=-1),
+                hovertemplate=(
+                    "Equipo %{x}<br>"
+                    "<b>Supervisor:</b> %{customdata[0]}<br>"
+                    "<b>Estado:</b> %{customdata[1]}<br>"
+                    "<b>Cantidad:</b> %{y}<extra></extra>"
+                ),
+                customdata=np.stack([
+                    grp["supervisor"],
+                    grp["estado_label"]
+                ], axis=-1)
             )
         
-            for eq in grp["EQUIPO_NUM"].unique():
-                fig_sup.add_annotation(
-                    x=eq * 3,
-                    y=-0.05,
-                    text=f"<b>{eq}</b>",
-                    showarrow=False,
-                    xref="x",
-                    yref="paper",
-                    font=dict(size=11, color="#333"),
-                )
-        
             fig_sup.update_layout(
-                xaxis=dict(
-                    title="Equipo",
-                    tickvals=[],
-                    range=[grp["EQUIPO_NUM"].min() * 3 - 1, grp["EQUIPO_NUM"].max() * 3 + 3],
-                ),
+                xaxis_title="Equipo",
                 yaxis_title="Cantidad",
                 font=dict(family="Arial", size=12),
                 title_font=dict(size=18, color="#1F9924", family="Arial"),
@@ -825,18 +813,19 @@ def modulo_vista(nombre_modulo: str):
                 margin=dict(l=30, r=30, t=60, b=70),
                 legend_title_text="Estado",
                 height=500,
-                width=max(1000, len(grp["EQUIPO_NUM"].unique()) * 80),
+                bargap=0.2,
             )
         
             fig_sup.update_traces(marker_line_width=0)
-            st.plotly_chart(fig_sup, use_container_width=False)
-        
+            st.plotly_chart(fig_sup, use_container_width=True)
+
         # =======================================================
         # 👨‍💻 VISTA ANALISTAS
         # =======================================================
         with tab_ana:
             tmp = tmp_base.copy()
         
+            # Asignar rol por equipo (A1, A2, ...)
             analistas_unicos = (
                 tmp[["EQUIPO_NUM", "analista", "supervisor"]]
                 .drop_duplicates()
@@ -848,60 +837,49 @@ def modulo_vista(nombre_modulo: str):
             tmp = tmp.merge(
                 analistas_unicos[["EQUIPO_NUM", "analista", "rol", "supervisor"]],
                 on=["EQUIPO_NUM", "analista", "supervisor"],
-                how="left",
+                how="left"
             )
         
             tmp["equipo_rol"] = tmp["EQUIPO_NUM"].astype(str) + " " + tmp["rol"]
         
             grp = (
-                tmp.groupby(["EQUIPO_NUM", "rol", "equipo_rol", "estado_carpeta", "supervisor", "analista"])
+                tmp.groupby(["equipo_rol", "estado_carpeta", "supervisor", "analista"])
                 .size()
                 .reset_index(name="cantidad")
             )
         
             grp["estado_label"] = grp["estado_carpeta"].map(ESTADOS_RENOM)
             grp["estado_label"] = pd.Categorical(grp["estado_label"], categories=estado_cat, ordered=True)
-            grp = grp.sort_values(["EQUIPO_NUM", "rol"])
-        
-            grp["xpos"] = grp["EQUIPO_NUM"] * 3 + grp["rol"].map({"A1": 0, "A2": 1}).fillna(0)
-            grp["xpos_label"] = grp["EQUIPO_NUM"].astype(str) + " " + grp["rol"]
+            grp = grp.sort_values(["equipo_rol", "estado_label"]).reset_index(drop=True)
         
             fig_ana = px.bar(
                 grp,
-                x="xpos",
+                x="equipo_rol",
                 y="cantidad",
                 color="estado_label",
-                category_orders={"estado_label": estado_cat},
-                color_discrete_sequence=COLOR_PALETTE,
                 barmode="stack",
+                color_discrete_sequence=COLOR_PALETTE,
+                category_orders={"estado_label": estado_cat},
                 title="<b>Estados por EQUIPO — Vista: Analistas</b>",
             )
         
             fig_ana.update_traces(
-                hovertemplate="Equipo %{customdata[0]}<br><b>Supervisor:</b> %{customdata[1]}<br><b>Analista:</b> %{customdata[2]}<br><b>Estado:</b> %{customdata[3]}<br><b>Cantidad:</b> %{y}<extra></extra>",
-                customdata=np.stack(
-                    [grp["EQUIPO_NUM"], grp["supervisor"], grp["analista"], grp["estado_label"]],
-                    axis=-1
+                hovertemplate=(
+                    "Equipo/Rol: %{x}<br>"
+                    "<b>Supervisor:</b> %{customdata[0]}<br>"
+                    "<b>Analista:</b> %{customdata[1]}<br>"
+                    "<b>Estado:</b> %{customdata[2]}<br>"
+                    "<b>Cantidad:</b> %{y}<extra></extra>"
                 ),
+                customdata=np.stack([
+                    grp["supervisor"],
+                    grp["analista"],
+                    grp["estado_label"]
+                ], axis=-1)
             )
         
-            for eq in grp["EQUIPO_NUM"].unique():
-                fig_ana.add_annotation(
-                    x=eq * 3 + 0.5,
-                    y=-0.05,
-                    text=f"<b>{eq}</b>",
-                    showarrow=False,
-                    xref="x",
-                    yref="paper",
-                    font=dict(size=11, color="#333"),
-                )
-        
             fig_ana.update_layout(
-                xaxis=dict(
-                    title="Equipo",
-                    tickvals=[],
-                    range=[grp["EQUIPO_NUM"].min() * 3 - 1, grp["EQUIPO_NUM"].max() * 3 + 3],
-                ),
+                xaxis_title="Equipo / Rol",
                 yaxis_title="Cantidad",
                 font=dict(family="Arial", size=12),
                 title_font=dict(size=18, color="#1F9924", family="Arial"),
@@ -909,11 +887,11 @@ def modulo_vista(nombre_modulo: str):
                 margin=dict(l=30, r=30, t=60, b=70),
                 legend_title_text="Estado",
                 height=500,
-                width=max(1000, len(grp["EQUIPO_NUM"].unique()) * 80),
+                bargap=0.2,
             )
         
             fig_ana.update_traces(marker_line_width=0)
-            st.plotly_chart(fig_ana, use_container_width=False)
+            st.plotly_chart(fig_ana, use_container_width=True)
 
     else:
         st.warning("No hay datos válidos de EQUIPO/estado para graficar.")
