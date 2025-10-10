@@ -443,7 +443,7 @@ def grafico_estado_analistas_solo_equipo(df: pd.DataFrame):
         ordered=True
     )
 
-    # Agrupar para generar trazas
+    # Agrupar por equipo_rol
     grp = (
         df.groupby(["equipo_rol", "estado_label", "supervisor", "analista", "EQUIPO_NUM"])
         .size()
@@ -454,26 +454,26 @@ def grafico_estado_analistas_solo_equipo(df: pd.DataFrame):
 
     for estado in [ESTADOS_RENOM[e] for e in ESTADOS_ORDEN]:
         subset = grp[grp["estado_label"] == estado]
+
+        hovertext = (
+            "Equipo: " + subset["EQUIPO_NUM"].astype(str) +
+            "<br>Supervisor: " + subset["supervisor"].astype(str) +
+            "<br>Analista: " + subset["analista"].astype(str) +
+            "<br>Estado: " + subset["estado_label"].astype(str) +
+            "<br>Cantidad: " + subset["cantidad"].astype(str)
+        )
+
         fig.add_trace(
             go.Bar(
                 x=subset["equipo_rol"],
                 y=subset["cantidad"],
                 name=estado,
-                customdata=np.stack([
-                    subset["EQUIPO_NUM"],
-                    subset["supervisor"],
-                    subset["analista"],
-                    subset["estado_label"]
-                ], axis=-1),
-                hovertemplate="<b>Equipo:</b> %{customdata[0]}<br>"
-                              "<b>Supervisor:</b> %{customdata[1]}<br>"
-                              "<b>Analista:</b> %{customdata[2]}<br>"
-                              "<b>Estado:</b> %{customdata[3]}<br>"
-                              "<b>Cantidad:</b> %{y}<extra></extra>",
+                hovertext=hovertext,
+                hoverinfo="text"
             )
         )
 
-    # Mostrar solo número del equipo en eje X
+    # Etiquetas: solo número de equipo
     x_vals = grp["equipo_rol"].unique()
     x_labels = [v.split()[0] for v in x_vals]
 
