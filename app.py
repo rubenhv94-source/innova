@@ -312,9 +312,11 @@ def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
 def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> pd.DataFrame:
     col = sujetos_col(modulo)
 
+    # Validación básica
     if df_mod.empty or col not in df_mod.columns:
         return pd.DataFrame(columns=["Categoria", col.capitalize(), "Analizadas", "Meta", "Faltantes"])
 
+    # Estados válidos según módulo
     if modulo.lower() == "analistas":
         estados_efectivos = {"auditada", "aprobada", "calificada"}
     elif modulo.lower() == "supervisores":
@@ -324,9 +326,11 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> p
     else:
         estados_efectivos = set()
 
+    # Limpieza y normalización
     df_mod = df_mod.dropna(subset=["estado_carpeta", col])
     df_mod["estado_carpeta"] = df_mod["estado_carpeta"].str.strip().str.lower()
 
+    # Pivot principal: cuenta de carpetas por sujeto y estado
     pivot = (
         df_mod
         .groupby([col, "estado_carpeta"])
@@ -335,26 +339,35 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> p
         .reset_index()
     )
 
+    # Asegurar todas las columnas de estados
     for estado in ESTADOS_ORDEN:
         if estado not in pivot.columns:
             pivot[estado] = 0
 
+    # Cálculos
     pivot["Analizadas"] = pivot[[e for e in ESTADOS_ORDEN if e in estados_efectivos]].sum(axis=1)
     pivot["Meta"] = per_subject_meta
     pivot["Faltantes"] = pivot["Meta"] - pivot["Analizadas"]
     pivot["Categoria"] = pivot["Faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
 
+    # Columnas finales
     columnas_estado = ESTADOS_ORDEN
-    if modulo.lower() == "equipos":
-        out = pivot[[col] + columnas_estado + ["Analizadas"]]
-    else:
-        out = pivot[[col] + columnas_estado + ["Analizadas", "Meta", "Faltantes", "Categoria"]]
+    columnas_finales = [col] + columnas_estado + ["Analizadas", "Meta", "Faltantes", "Categoria"]
 
+    # Selección final
+    out = pivot[columnas_finales]
+
+    # Categorías ordenadas
     categorias = ["Al día", "Atraso normal", "Atraso medio", "Atraso alto"]
-    out["Categoria"] = pd.Categorical(out["Categoria"], categories=categorias, ordered=True)
-    out = out.sort_values(["Categoria", col], ascending=[True, True])
+    if "Categoria" in out.columns:
+        out["Categoria"] = pd.Categorical(out["Categoria"], categories=categorias, ordered=True)
+        out = out.sort_values(["Categoria", col], ascending=[True, True])
+    else:
+        out = out.sort_values(col)
 
+    # Renombrar columnas (estados homologados)
     out = out.rename(columns={col: col.capitalize(), **{e: ESTADOS_RENOM.get(e, e) for e in columnas_estado}})
+
     return out
 
 def grafico_estado_supervisor(df: pd.DataFrame):
