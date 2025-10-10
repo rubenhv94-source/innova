@@ -319,6 +319,8 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> p
         estados_efectivos = {"auditada", "aprobada", "calificada"}
     elif modulo.lower() == "supervisores":
         estados_efectivos = {"auditada", "aprobada"}
+    elif modulo.lower() == "equipos":
+        estados_efectivos = {"auditada"}
     else:
         estados_efectivos = set()
 
@@ -343,7 +345,10 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> p
     pivot["Categoria"] = pivot["Faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
 
     columnas_estado = ESTADOS_ORDEN
-    out = pivot[[col] + columnas_estado + ["Analizadas", "Meta", "Faltantes", "Categoria"]]
+    if modulo.lower() == "equipos":
+        out = pivot[[col] + columnas_estado + ["Analizadas"]]
+    else:
+        out = pivot[[col] + columnas_estado + ["Analizadas", "Meta", "Faltantes", "Categoria"]]
 
     categorias = ["Al día", "Atraso normal", "Atraso medio", "Atraso alto"]
     out["Categoria"] = pd.Categorical(out["Categoria"], categories=categorias, ordered=True)
@@ -953,7 +958,7 @@ def modulo_vista(nombre_modulo: str):
         st.plotly_chart(fig_ana, use_container_width=True)
 
     # Tabla resumen a nivel de "Equipos": usamos auditor como sujeto base
-    tabla = tabla_resumen(dfm, "Equipos", 34 * dias_habiles_loc)  # meta individual auditores ~ supervisores
+    tabla = tabla_resumen(dfm, "Equipos", 34 * dias_habiles_loc)
     st.markdown(f"<h3 style='color:#1F9924; font-weight:600; margin-top: 1em;'>Resumen {nombre_modulo}</h3>", unsafe_allow_html=True)
     st.dataframe(tabla, use_container_width=True)
 
