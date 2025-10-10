@@ -420,7 +420,7 @@ def grafico_estado_supervisor(df: pd.DataFrame):
     return fig
 
 def grafico_estado_analistas(df: pd.DataFrame):
-    # Crear roles por equipo (A1, A2...)
+    # Crear roles por equipo
     analistas_unicos = (
         df[["EQUIPO_NUM", "analista", "supervisor"]]
         .drop_duplicates()
@@ -435,10 +435,7 @@ def grafico_estado_analistas(df: pd.DataFrame):
         how="left"
     )
 
-    # Crear etiqueta de rol único por equipo
     df["equipo_rol"] = df["EQUIPO_NUM"].astype(str) + " " + df["rol"]
-
-    # Mapeo de etiquetas y categorías
     df["estado_label"] = df["estado_carpeta"].map(ESTADOS_RENOM)
     df["estado_label"] = pd.Categorical(
         df["estado_label"],
@@ -446,7 +443,6 @@ def grafico_estado_analistas(df: pd.DataFrame):
         ordered=True
     )
 
-    # Agrupación por analista (equipo_rol)
     grp = (
         df.groupby(["equipo_rol", "estado_label", "EQUIPO_NUM", "analista", "supervisor"])
         .size()
@@ -457,26 +453,26 @@ def grafico_estado_analistas(df: pd.DataFrame):
 
     for estado in [ESTADOS_RENOM[e] for e in ESTADOS_ORDEN]:
         subset = grp[grp["estado_label"] == estado]
+
+        hovertext = (
+            "Equipo: " + subset["EQUIPO_NUM"].astype(str) +
+            "<br>Analista: " + subset["analista"].astype(str) +
+            "<br>Supervisor: " + subset["supervisor"].astype(str) +
+            "<br>Estado: " + subset["estado_label"].astype(str) +
+            "<br>Cantidad: " + subset["cantidad"].astype(str)
+        )
+
         fig.add_trace(
             go.Bar(
                 x=subset["equipo_rol"],
                 y=subset["cantidad"],
                 name=estado,
-                customdata=np.stack([
-                    subset["EQUIPO_NUM"],
-                    subset["analista"],
-                    subset["supervisor"],
-                    subset["estado_label"]
-                ], axis=-1),
-                hovertemplate="<b>Equipo:</b> %{customdata[0]}<br>"
-                              "<b>Analista:</b> %{customdata[1]}<br>"
-                              "<b>Supervisor:</b> %{customdata[2]}<br>"
-                              "<b>Estado:</b> %{customdata[3]}<br>"
-                              "<b>Cantidad:</b> %{y}<extra></extra>",
+                hovertext=hovertext,
+                hoverinfo="text"
             )
         )
 
-    # Mostrar solo el número de equipo en el eje x
+    # Solo mostrar número del equipo en el eje x
     x_vals = grp["equipo_rol"].unique()
     x_labels = [v.split()[0] for v in x_vals]
 
@@ -490,9 +486,9 @@ def grafico_estado_analistas(df: pd.DataFrame):
         plot_bgcolor="white",
         legend_title_text="Estado",
         height=500,
-        margin=dict(l=30, r=30, t=60, b=70),
         bargap=0.2,
         colorway=COLOR_PALETTE,
+        margin=dict(l=30, r=30, t=60, b=70),
         xaxis=dict(
             tickmode="array",
             tickvals=x_vals,
