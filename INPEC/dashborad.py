@@ -55,10 +55,10 @@ def cargar_csv(url: str) -> pd.DataFrame:
     return df
 
 URLS = {
-    "Cronograma": "https://URL_1",
-    "Entregables": "https://URL_2",
-    "VRM": "https://URL_3",
-    "Reclamaciones": "https://URL_4"
+    "Cronograma": "https://docs.google.com/spreadsheets/d/e/2PACX-1vThSek_BzK-DeNwhsjcmqSWJLz4vNQ_bBQJ8cXV_pEjCLGN8T64WcIqsLEfQIYcO9dVLCPHfdnNdfhC/pub?gid=1775323779&single=true&output=csv",
+    "Entregables": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXU3Fh-35s_7ZysWWnWQpQhhHxMst_qqFznNeBA1xmvMVYpo7yVODZTaHTqh12ptDViA6CYLLaZWre/pub?gid=1749869584&single=true&output=csv",
+    "VRM": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVxG-bO1D5mkgUFCU35drRV4tyXT9aRaW6q4zzWGa9nFAqkLVdZxaIjwD1cEMJIAXuI4xTBlhHS1og/pub?gid=991630809&single=true&output=csv",
+    "Reclamaciones": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVxG-bO1D5mkgUFCU35drRV4tyXT9aRaW6q4zzWGa9nFAqkLVdZxaIjwD1cEMJIAXuI4xTBlhHS1og/pub?gid=991630809&single=true&output=csv"
 }
 
 datos = {nombre: cargar_csv(url) for nombre, url in URLS.items()}
@@ -162,10 +162,10 @@ if df_base.empty:
 
 # Define aquí las columnas filtrables para cada módulo
 COLUMNAS_FILTRO = {
-    "Cronograma": ["estado", "responsable"],
-    "Entregables": ["tipo", "prioridad"],
-    "VRM": ["categoria", "estado"],
-    "Reclamaciones": ["motivo", "estado"]
+    "Cronograma": ["Etapa", "Estado"],
+    "Entregables": ["NO. DE PAGO", "RESPONSABLE"],
+    "VRM": ["OPEC", "NIVEL"],
+    "Reclamaciones": ["OPEC", "NIVEL"]
 }
 cols_filtro = COLUMNAS_FILTRO.get(mod_actual, [])
 filtros = generar_filtros_sidebar(df_base, cols_filtro, mod_actual)
