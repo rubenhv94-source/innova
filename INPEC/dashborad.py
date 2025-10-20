@@ -100,7 +100,7 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
         archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"]).dt.date
         archivo_metas["META EQUIPO A LA FECHA"] = (
             pd.to_numeric(
-                archivo_metas["META EQUIPO A LA FECHA"].str.replace("-", "0"), 
+                archivo_metas["META EQUIPO A LA FECHA"].str.replace("-", "0").str.replace(".", ""), 
                 errors="coerce"
             ).fillna(0).astype(int)
         )
