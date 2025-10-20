@@ -344,9 +344,16 @@ modulos_con_iconos = {
     "VRM": "📊 VRM"
 }
 
-mod_actual = st.sidebar.radio(
+# Mostrar valores bonitos en el menú
+seleccion_visual = st.sidebar.radio(
     "Selecciona módulo:",
     list(modulos_con_iconos.values())
+)
+
+# Obtener la clave real del módulo
+mod_actual = next(
+    (clave for clave, valor in modulos_con_iconos.items() if valor == seleccion_visual),
+    None
 )
 
 if st.sidebar.button("🔄 Refrescar datos"):
