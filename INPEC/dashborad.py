@@ -49,44 +49,6 @@ COLOR_PALETTE = [
 ]
 
 # ===================================
-# 🔐 AUTENTICACIÓN DE USUARIOS
-# ===================================
-
-# --- Configuración de usuarios ---
-usuarios = {
-    "usuario1": {"nombre": "Ruben Herrera", "contraseña": "1234"},
-    "usuario2": {"nombre": "Ana Pérez", "contraseña": "abcd"}
-}
-
-# --- Generar contraseñas hash seguras ---
-hashed_passwords = stauth.Hasher([u["contraseña"] for u in usuarios.values()]).generate()
-
-# --- Crear autenticador ---
-authenticator = stauth.Authenticate(
-    names=[u["nombre"] for u in usuarios.values()],
-    usernames=list(usuarios.keys()),
-    passwords=hashed_passwords,
-    cookie_name="dashboard_cookie",
-    key="clave_firma_segura",
-    cookie_expiry_days=1
-)
-
-# --- Formulario de inicio de sesión ---
-nombre, estado_autenticacion, usuario = authenticator.login("Inicio de sesión", "main")
-
-if estado_autenticacion:
-    authenticator.logout("Cerrar sesión", "sidebar")
-    st.sidebar.success(f"Sesión iniciada: {nombre}")
-
-    # ✅ Si pasa autenticación, continúa al tablero
-else:
-    if estado_autenticacion is False:
-        st.error("Usuario o contraseña incorrectos.")
-    elif estado_autenticacion is None:
-        st.warning("Por favor inicia sesión para continuar.")
-    st.stop()  # ⛔ Detiene la ejecución si no ha iniciado sesión
-
-# ===================================
 # 📥 CARGA DE DATOS
 # ===================================
 @st.cache_data(ttl=600)
@@ -302,6 +264,46 @@ def grafico_anillo(df: pd.DataFrame, columna: str, titulo: str):
     )
     fig.update_traces(textinfo="label+percent", textfont_size=12)
     st.plotly_chart(fig, use_container_width=True)
+
+# ===================================
+# 🔐 AUTENTICACIÓN DE USUARIOS
+# ===================================
+import streamlit_authenticator as stauth
+
+# --- Usuarios y contraseñas (texto plano para ejemplo) ---
+usuarios = {
+    "usuario1": {"nombre": "Ruben Herrera", "contraseña": "1234"},
+    "usuario2": {"nombre": "Ana Pérez", "contraseña": "abcd"},
+}
+
+# --- Crear lista de contraseñas en orden ---
+passwords_list = [u["contraseña"] for u in usuarios.values()]
+
+# --- Generar hashes (una sola vez en ejecución) ---
+hashed_passwords = stauth.Hasher(passwords_list).generate()
+
+# --- Crear autenticador ---
+authenticator = stauth.Authenticate(
+    names=[u["nombre"] for u in usuarios.values()],
+    usernames=list(usuarios.keys()),
+    passwords=hashed_passwords,
+    cookie_name="login_dashboard",
+    key="firma_segura_dashboard",
+    cookie_expiry_days=1
+)
+
+# --- Formulario de inicio de sesión ---
+nombre, estado_autenticacion, usuario = authenticator.login("Inicio de sesión", "main")
+
+if estado_autenticacion:
+    authenticator.logout("Cerrar sesión", "sidebar")
+    st.sidebar.success(f"Sesión iniciada: {nombre}")
+else:
+    if estado_autenticacion is False:
+        st.error("Usuario o contraseña incorrectos.")
+    elif estado_autenticacion is None:
+        st.warning("Por favor inicia sesión para continuar.")
+    st.stop()
 
 # ===================================
 # 🚦 NAVEGACIÓN Y RENDER
