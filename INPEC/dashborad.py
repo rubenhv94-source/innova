@@ -94,7 +94,7 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
         tz = timezone("America/Bogota")
         hoy = datetime.now(tz).date()
         #fecha_referencia = hoy - timedelta(days=1)
-        fecha_referencia = hoy + timedelta(days=1)
+        fecha_referencia = hoy + timedelta(days=2)
 
         # Asegurar tipo de fecha
         archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"]).dt.date
