@@ -148,7 +148,7 @@ def grafico_embudo(df: pd.DataFrame, columna: str, titulo: str):
     conteo.columns = ["etapa", "cantidad"]
     total = conteo["cantidad"].sum()
     conteo["porcentaje"] = (conteo["cantidad"] / total * 100).round(1)
-    conteo["texto"] = conteo["cantidad"].astype(str) + " (" + conteo["porcentaje"].astype(str) + "%)"
+    conteo["texto"] = conteo[columna] + ": " + conteo["cantidad"].astype(str) + " (" + conteo["porcentaje"].astype(str) + "%)"
 
     fig = go.Figure(go.Funnel(
         y=conteo["etapa"],
