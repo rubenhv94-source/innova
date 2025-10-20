@@ -38,7 +38,13 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-COLOR_PALETTE = px.colors.sequential.YlGn[::-1]
+COLOR_PALETTE = [
+    "#006D2C",  # Verde oscuro
+    "#31A354",  # Verde medio
+    "#74C476",  # Verde claro
+    "#A1D99B",  # Verde pastel
+    "#C7E9C0"   # Verde muy claro
+]
 
 # ===================================
 # 📥 CARGA DE DATOS
