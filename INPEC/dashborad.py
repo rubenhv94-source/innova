@@ -112,9 +112,11 @@ def semaforizar(valor: int | float, limites: tuple[int, int]) -> str:
 def tabla_resaltada(df: pd.DataFrame, columnas: list[str], col_semaforo: str = None, limites=(10, 20)):
     columnas = [c for c in columnas if not c.lower().startswith("unnamed")]
     df_out = df[columnas].copy()
+
     if col_semaforo and col_semaforo in df_out.columns:
         df_out["Indicador"] = df_out[col_semaforo].astype(float).apply(lambda x: semaforizar(x, limites))
-    st.dataframe(df_out, use_container_width=True)
+
+    st.dataframe(df_out.reset_index(drop=True), use_container_width=True)
 
 def grafico_barras(df: pd.DataFrame, columna: str, titulo: str):
     conteo = df[columna].value_counts().reset_index()
