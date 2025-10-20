@@ -263,8 +263,8 @@ if "Barras" in vis_seleccionadas and "barras" in cols_graficos:
 
 # === Visualización: ANILLO ===
 if "Anillo" in vis_seleccionadas and "anillo" in cols_graficos:
-    grafico_anillo(df_filtrado, columna=cols_graficos["anillo"], titulo="Distribución por {cols_graficos}")
+    grafico_anillo(df_filtrado, columna=cols_graficos["anillo"], titulo="Distribución por {cols_graficos["anillo"]}")
 
 # === Visualización: EMBUDO ===
 if "Embudo" in vis_seleccionadas and "embudo" in cols_graficos:
-    grafico_embudo(df_filtrado, columna=cols_graficos["embudo"], titulo="Embudo por {cols_graficos}")
+    grafico_embudo(df_filtrado, columna=cols_graficos["embudo"], titulo="Embudo por {cols_graficos["embudo"]}")
