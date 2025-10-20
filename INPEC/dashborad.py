@@ -255,6 +255,10 @@ if "Tabla" in vis_seleccionadas:
 if "Barras" in vis_seleccionadas and "barras" in cols_graficos:
     grafico_barras(df_filtrado, columna=cols_graficos["barras"], titulo="Distribución")
 
+# === Visualización: BARRAS2 ===
+if "Barras" in vis_seleccionadas and "barras" in cols_graficos:
+    grafico_barras(df_filtrado, columna=cols_graficos["barras"], titulo="Distribución")
+
 # === Visualización: ANILLO ===
 if "Anillo" in vis_seleccionadas and "anillo" in cols_graficos:
     grafico_anillo(df_filtrado, columna=cols_graficos["anillo"], titulo="Distribución Anillo")
