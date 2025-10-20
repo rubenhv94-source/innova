@@ -169,7 +169,7 @@ vis_default = {
 }.get(mod_actual, ["Tabla"])
 
 opciones_vis = ["Tabla", "Barras", "Anillo", "Embudo"]
-#vis_seleccionadas = st.multiselect("Visualizaciones:", opciones_vis, default=vis_default)
+vis_seleccionadas = st.multiselect("Visualizaciones:", opciones_vis, default=vis_default)
 
 if "Tabla" in vis_seleccionadas:
     st.subheader("📋 Tabla de datos")
