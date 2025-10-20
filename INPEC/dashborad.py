@@ -275,10 +275,7 @@ def grafico_anillo(df: pd.DataFrame, columna: str, titulo: str):
 # ===================================
 # 🔐 AUTENTICACIÓN DE USUARIOS (versión 0.4.2)
 # ===================================
-import streamlit as st
-import streamlit_authenticator as stauth
-
-# --- Configuración de usuarios ---
+# Definir credenciales (ejemplo)
 credentials = {
     "usernames": {
         "usuario1": {
@@ -288,141 +285,144 @@ credentials = {
         "usuario2": {
             "name": "Ana Pérez",
             "password": stauth.Hasher.hash("abcd")
-        },
+        }
     }
 }
 
-# --- Crear autenticador ---
+# Crear el autenticador
 authenticator = stauth.Authenticate(
-    credentials=credentials,
-    cookie_name="dashboard_cookie",
-    key="clave_segura_dashboard",
-    cookie_expiry_days=1,
+    credentials,
+    "dashboard_cookie",      # nombre de cookie
+    "clave_secreta_dashboard",  # firma/key para cookie
+    1                        # días de expiración
 )
 
-# --- Formulario de inicio de sesión ---
-nombre, estado_autenticacion, usuario = authenticator.login("Inicio de sesión", location="main")
+# Formulario de login
+name, authentication_status, username = authenticator.login(
+    "Inicio de sesión", location="main"
+)
 
-# --- Control de acceso ---
-if estado_autenticacion:
+# Control de acceso
+if authentication_status:
     authenticator.logout("Cerrar sesión", location="sidebar")
-    st.sidebar.success(f"Sesión iniciada: {nombre}")
+    st.sidebar.success(f"Sesión iniciada: {name}")
+
+
+    # ===================================
+    # 🚦 NAVEGACIÓN Y RENDER
+    # ===================================
+    st.title("Proceso de Selección INPEC Cuerpo de Custodia y Vigilancia 11")
+    st.sidebar.title("🔎 Navegación")
+    mod_actual = st.sidebar.radio("Selecciona módulo:", list(URLS.keys()))
+    
+    if st.sidebar.button("🔄 Refrescar datos"):
+        st.cache_data.clear()
+        st.rerun()
+    
+    if st.sidebar.button("🧹 Borrar filtros"):
+        if "filtros" in st.session_state:
+            st.session_state["filtros"].pop(mod_actual, None)
+        st.rerun()
+    
+    df_base = get_datos_por_modulo(mod_actual)
+    df_base = limpiar_datos_por_modulo(mod_actual, df_base)
+    
+    if df_base.empty:
+        st.warning("No hay datos disponibles.")
+        st.stop()
+    
+    # Filtros
+    
+    COLUMNAS_FILTRO = {
+        "Cronograma": ["Etapa", "Actividad", "Estado", "Responsable_contractual"],
+        "Entregables": ["NO. DE PAGO", "NO. DE ENTREGABLE", "ENTREGABLE", "ESTADO"],
+        "VRM": ["estado_carpeta", "numero_opec", "nivel_x", "estado_rm"],
+        #"Reclamaciones": ["numero_opec", "nivel_x", "estado_carpeta"]
+    }
+    
+    cols_filtro = COLUMNAS_FILTRO.get(mod_actual, [])
+    filtros = generar_filtros_sidebar(df_base, cols_filtro, mod_actual)
+    df_filtrado = aplicar_filtros_dinamicos(df_base, filtros)
+    
+    st.title(f"{mod_actual}")
+    
+    if mod_actual == "VRM":
+        c1, c2, c3, c4 = st.columns(4)
+    
+        total = len(df_filtrado)
+        ejecutadas = len(df_filtrado[df_filtrado["estado_carpeta"] == "auditada"])
+        diferencia = total - ejecutadas
+        porcentaje = (ejecutadas / total * 100) if total else 0
+    
+        c1.metric("🎯 Meta Proyectada", f"{total:,}".replace(",", "."))
+        c2.metric("✔️ Meta Ejecutada", f"{ejecutadas:,}".replace(",", "."))
+        c3.metric("↔️ Diferencia", f"{diferencia:,}".replace(",", "."))
+        c4.metric("〽️ Porcentaje", f"{porcentaje:.1f}%")
+    
+        st.subheader("📈 Avance por Usuario")
+        resumen = st.session_state.get("df_resumen_vrm")
+        if resumen is not None:
+            st.dataframe(resumen, use_container_width=True, hide_index=True)
+    
+    # Visualizaciones por módulo (fijas)
+    vis_default = {
+        "Cronograma": ["Tabla", "Barras", "Barras"],
+        "Entregables": ["Tabla", "Barras", "Anillo"],
+        "VRM": ["Tabla", "Embudo", "Anillo"],
+        #"Reclamaciones": ["Tabla", "Embudo"]
+    }.get(mod_actual, ["Tabla"])
+    vis_seleccionadas = vis_default
+    
+    # Configuración columnas por módulo
+    COLUMNAS_TABLA = {
+        "Cronograma": ["NO.", "Etapa", "Actividad", "F INICIO P", "F FIN P", "Estado", "Fecha de cumplimiento", "Responsable_contractual"],
+        "Entregables": ["NO. DE ENTREGABLE", "NO. DE PAGO", "ENTREGABLE", "ESTADO"],
+        "VRM": ["convocatoria", "numero_opec", "nivel_x", "estado_rm", "estado_carpeta"],
+        #"Reclamaciones": ["numero_opec", "nivel_x", "estado_carpeta"]
+    }
+    
+    COLUMNAS_GRAFICOS = {
+        "Cronograma": {"barras": ["Estado", "Etapa"]},
+        "Entregables": {"barras": ["ESTADO"], "anillo": "NO. DE PAGO"},
+        "VRM": {"anillo": "estado_rm", "embudo": "estado_carpeta"}#,
+        #"Reclamaciones": {"barras": "estado_carpeta", "anillo": "estado_carpeta", "embudo": "estado_carpeta"}
+    }
+    cols_graficos = COLUMNAS_GRAFICOS.get(mod_actual, {})
+    cols_vis = COLUMNAS_TABLA.get(mod_actual, df_filtrado.columns[:5].tolist())
+    
+    # === Visualización: TABLA ===
+    
+    colores_cronograma = {
+        "VENCIDO": "#f8d7da",             # rojo claro
+        "PROXIMO A VENCER": "#fff3cd",    # amarillo claro
+        "EN GESTIÓN": "#d4edda"           # verde claro
+    }
+    
+    if "Tabla" in vis_seleccionadas:
+        st.subheader("📋 Tabla de datos")
+        tabla_resaltada(
+            df_filtrado,
+            columnas=cols_vis,
+            col_estado="Estado",
+            colores_estado=colores_cronograma
+        )
+    
+    # === Visualización: BARRAS ===
+    if "Barras" in vis_seleccionadas and "barras" in cols_graficos:
+        for col in cols_graficos["barras"]:
+            grafico_barras(df_filtrado, columna=col, titulo=f"Distribución por {col}")
+    
+    # === Visualización: EMBUDO ===
+    if "Embudo" in vis_seleccionadas and "embudo" in cols_graficos:
+        grafico_embudo(df_filtrado, columna=cols_graficos["embudo"], titulo=f"Embudo por {cols_graficos['embudo']}")
+    
+    # === Visualización: ANILLO ===
+    if "Anillo" in vis_seleccionadas and "anillo" in cols_graficos:
+        grafico_anillo(df_filtrado, columna=cols_graficos["anillo"], titulo=f"Distribución por {cols_graficos['anillo']}")
+
 else:
-    if estado_autenticacion is False:
+    if authentication_status is False:
         st.error("Usuario o contraseña incorrectos.")
-    elif estado_autenticacion is None:
+    elif authentication_status is None:
         st.warning("Por favor inicia sesión para continuar.")
     st.stop()
-
-
-# ===================================
-# 🚦 NAVEGACIÓN Y RENDER
-# ===================================
-st.title("Proceso de Selección INPEC Cuerpo de Custodia y Vigilancia 11")
-st.sidebar.title("🔎 Navegación")
-mod_actual = st.sidebar.radio("Selecciona módulo:", list(URLS.keys()))
-
-if st.sidebar.button("🔄 Refrescar datos"):
-    st.cache_data.clear()
-    st.rerun()
-
-if st.sidebar.button("🧹 Borrar filtros"):
-    if "filtros" in st.session_state:
-        st.session_state["filtros"].pop(mod_actual, None)
-    st.rerun()
-
-df_base = get_datos_por_modulo(mod_actual)
-df_base = limpiar_datos_por_modulo(mod_actual, df_base)
-
-if df_base.empty:
-    st.warning("No hay datos disponibles.")
-    st.stop()
-
-# Filtros
-
-COLUMNAS_FILTRO = {
-    "Cronograma": ["Etapa", "Actividad", "Estado", "Responsable_contractual"],
-    "Entregables": ["NO. DE PAGO", "NO. DE ENTREGABLE", "ENTREGABLE", "ESTADO"],
-    "VRM": ["estado_carpeta", "numero_opec", "nivel_x", "estado_rm"],
-    #"Reclamaciones": ["numero_opec", "nivel_x", "estado_carpeta"]
-}
-
-cols_filtro = COLUMNAS_FILTRO.get(mod_actual, [])
-filtros = generar_filtros_sidebar(df_base, cols_filtro, mod_actual)
-df_filtrado = aplicar_filtros_dinamicos(df_base, filtros)
-
-st.title(f"{mod_actual}")
-
-if mod_actual == "VRM":
-    c1, c2, c3, c4 = st.columns(4)
-
-    total = len(df_filtrado)
-    ejecutadas = len(df_filtrado[df_filtrado["estado_carpeta"] == "auditada"])
-    diferencia = total - ejecutadas
-    porcentaje = (ejecutadas / total * 100) if total else 0
-
-    c1.metric("🎯 Meta Proyectada", f"{total:,}".replace(",", "."))
-    c2.metric("✔️ Meta Ejecutada", f"{ejecutadas:,}".replace(",", "."))
-    c3.metric("↔️ Diferencia", f"{diferencia:,}".replace(",", "."))
-    c4.metric("〽️ Porcentaje", f"{porcentaje:.1f}%")
-
-    st.subheader("📈 Avance por Usuario")
-    resumen = st.session_state.get("df_resumen_vrm")
-    if resumen is not None:
-        st.dataframe(resumen, use_container_width=True, hide_index=True)
-
-# Visualizaciones por módulo (fijas)
-vis_default = {
-    "Cronograma": ["Tabla", "Barras", "Barras"],
-    "Entregables": ["Tabla", "Barras", "Anillo"],
-    "VRM": ["Tabla", "Embudo", "Anillo"],
-    #"Reclamaciones": ["Tabla", "Embudo"]
-}.get(mod_actual, ["Tabla"])
-vis_seleccionadas = vis_default
-
-# Configuración columnas por módulo
-COLUMNAS_TABLA = {
-    "Cronograma": ["NO.", "Etapa", "Actividad", "F INICIO P", "F FIN P", "Estado", "Fecha de cumplimiento", "Responsable_contractual"],
-    "Entregables": ["NO. DE ENTREGABLE", "NO. DE PAGO", "ENTREGABLE", "ESTADO"],
-    "VRM": ["convocatoria", "numero_opec", "nivel_x", "estado_rm", "estado_carpeta"],
-    #"Reclamaciones": ["numero_opec", "nivel_x", "estado_carpeta"]
-}
-
-COLUMNAS_GRAFICOS = {
-    "Cronograma": {"barras": ["Estado", "Etapa"]},
-    "Entregables": {"barras": ["ESTADO"], "anillo": "NO. DE PAGO"},
-    "VRM": {"anillo": "estado_rm", "embudo": "estado_carpeta"}#,
-    #"Reclamaciones": {"barras": "estado_carpeta", "anillo": "estado_carpeta", "embudo": "estado_carpeta"}
-}
-cols_graficos = COLUMNAS_GRAFICOS.get(mod_actual, {})
-cols_vis = COLUMNAS_TABLA.get(mod_actual, df_filtrado.columns[:5].tolist())
-
-# === Visualización: TABLA ===
-
-colores_cronograma = {
-    "VENCIDO": "#f8d7da",             # rojo claro
-    "PROXIMO A VENCER": "#fff3cd",    # amarillo claro
-    "EN GESTIÓN": "#d4edda"           # verde claro
-}
-
-if "Tabla" in vis_seleccionadas:
-    st.subheader("📋 Tabla de datos")
-    tabla_resaltada(
-        df_filtrado,
-        columnas=cols_vis,
-        col_estado="Estado",
-        colores_estado=colores_cronograma
-    )
-
-# === Visualización: BARRAS ===
-if "Barras" in vis_seleccionadas and "barras" in cols_graficos:
-    for col in cols_graficos["barras"]:
-        grafico_barras(df_filtrado, columna=col, titulo=f"Distribución por {col}")
-
-# === Visualización: EMBUDO ===
-if "Embudo" in vis_seleccionadas and "embudo" in cols_graficos:
-    grafico_embudo(df_filtrado, columna=cols_graficos["embudo"], titulo=f"Embudo por {cols_graficos['embudo']}")
-
-# === Visualización: ANILLO ===
-if "Anillo" in vis_seleccionadas and "anillo" in cols_graficos:
-    grafico_anillo(df_filtrado, columna=cols_graficos["anillo"], titulo=f"Distribución por {cols_graficos['anillo']}")
