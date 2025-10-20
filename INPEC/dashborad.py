@@ -272,6 +272,47 @@ def grafico_anillo(df: pd.DataFrame, columna: str, titulo: str):
     fig.update_traces(textinfo="label+percent", textfont_size=12)
     st.plotly_chart(fig, use_container_width=True)
 
+# ===================================
+# 🔐 AUTENTICACIÓN DE USUARIOS (versión 0.4.2)
+# ===================================
+import streamlit as st
+import streamlit_authenticator as stauth
+
+# --- Configuración de usuarios ---
+credentials = {
+    "usernames": {
+        "usuario1": {
+            "name": "Ruben Herrera",
+            "password": stauth.Hasher.hash("1234")
+        },
+        "usuario2": {
+            "name": "Ana Pérez",
+            "password": stauth.Hasher.hash("abcd")
+        },
+    }
+}
+
+# --- Crear autenticador ---
+authenticator = stauth.Authenticate(
+    credentials=credentials,
+    cookie_name="dashboard_cookie",
+    key="clave_segura_dashboard",
+    cookie_expiry_days=1,
+)
+
+# --- Formulario de inicio de sesión ---
+nombre, estado_autenticacion, usuario = authenticator.login("Inicio de sesión", location="main")
+
+# --- Control de acceso ---
+if estado_autenticacion:
+    authenticator.logout("Cerrar sesión", location="sidebar")
+    st.sidebar.success(f"Sesión iniciada: {nombre}")
+else:
+    if estado_autenticacion is False:
+        st.error("Usuario o contraseña incorrectos.")
+    elif estado_autenticacion is None:
+        st.warning("Por favor inicia sesión para continuar.")
+    st.stop()
 
 
 # ===================================
