@@ -10,6 +10,7 @@ from datetime import date
 from pytz import timezone
 from datetime import datetime, timedelta
 import streamlit_authenticator as stauth
+import importlib.metadata as metadata
 
 try:
     version_auth = importlib.metadata.version("streamlit-authenticator")
