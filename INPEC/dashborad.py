@@ -153,7 +153,7 @@ def grafico_embudo(df: pd.DataFrame, columna: str, titulo: str):
     conteo.columns = ["etapa", "cantidad"]
     total = conteo["cantidad"].sum()
     conteo["porcentaje"] = (conteo["cantidad"] / total * 100).round(1)
-    conteo["texto"] = conteo[columna] + ": " + conteo["cantidad"].astype(str) + " (" + conteo["porcentaje"].astype(str) + "%)"
+    conteo["texto"] = conteo["cantidad"].astype(str) + " (" + conteo["porcentaje"].astype(str) + "%)"
 
     fig = go.Figure(go.Funnel(
         y=conteo["etapa"],
@@ -170,7 +170,7 @@ def grafico_anillo(df: pd.DataFrame, columna: str, titulo: str):
     conteo = df[columna].value_counts().reset_index()
     conteo.columns = [columna, "cantidad"]
     conteo["porcentaje"] = (conteo["cantidad"] / conteo["cantidad"].sum() * 100).round(1)
-    conteo["texto"] = conteo["cantidad"].astype(str) + " (" + conteo["porcentaje"].astype(str) + "%)"
+    conteo["texto"] = conteo[columna] + ": " + conteo["cantidad"].astype(str) + " (" + conteo["porcentaje"].astype(str) + "%)"
 
     fig = px.pie(
         conteo,
