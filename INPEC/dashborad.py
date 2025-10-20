@@ -65,7 +65,7 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
         df[col] = df[col].astype(str).str.strip()
 
     if modulo == "Cronograma" and "Fecha Inicio" in df.columns:
-        df["Fecha Inicio"] = pd.to_datetime(df["Fecha Inicio"], errors="coerce")
+        df["Fecha Inicio"] = pd.to_datetime(df["Fecha Inicio"], errors="coerce")   
 
     if modulo == "Entregables":
         df["ESTADO"] = np.where((df["REALIZADO POR LA FUAA"] == "TRUE")&(df["APROBADO POR LA CNSC"] == "TRUE"), "Aprobado", 
@@ -109,36 +109,77 @@ def semaforizar(valor: int | float, limites: tuple[int, int]) -> str:
 # ===================================
 # 📊 FUNCIONES DE VISUALIZACIÓN
 # ===================================
-def tabla_resaltada(df: pd.DataFrame, columnas: list[str], col_semaforo: str = None, limites=(10, 20)): 
+def tabla_resaltada(
+    df: pd.DataFrame,
+    columnas: list[str],
+    col_estado: str = None,
+    colores_estado: dict = None
+):
     columnas = [c for c in columnas if not c.lower().startswith("unnamed")]
     df_out = df[columnas].copy()
-    if col_semaforo and col_semaforo in df_out.columns:
-        df_out["Indicador"] = df_out[col_semaforo].astype(float).apply(lambda x: semaforizar(x, limites))
-        
-    st.dataframe(df_out, use_container_width=True, hide_index=True)
+
+    if col_estado and colores_estado:
+        def color_fila(row):
+            estado = str(row.get(col_estado, "")).strip().upper()
+            color = colores_estado.get(estado)
+            return [f"background-color: {color}" if color else "" for _ in row]
+
+        styled = df_out.style.apply(color_fila, axis=1)
+        st.dataframe(styled, use_container_width=True, hide_index=True)
+    else:
+        st.dataframe(df_out, use_container_width=True, hide_index=True)
 
 def grafico_barras(df: pd.DataFrame, columna: str, titulo: str):
     conteo = df[columna].value_counts().reset_index()
     conteo.columns = [columna, "cantidad"]
     conteo["porcentaje"] = (conteo["cantidad"] / conteo["cantidad"].sum() * 100).round(1)
-    fig = px.bar(conteo, x=columna, y="cantidad", text="porcentaje", color=columna,
-                 color_discrete_sequence=COLOR_PALETTE, title=f"<b>{titulo}</b>")
+    conteo["texto"] = conteo["cantidad"].astype(str) + " (" + conteo["porcentaje"].astype(str) + "%)"
+
+    fig = px.bar(
+        conteo,
+        x=columna,
+        y="cantidad",
+        text="texto",
+        color=columna,
+        color_discrete_sequence=COLOR_PALETTE,
+        title=f"<b>{titulo}</b>"
+    )
+    fig.update_traces(textposition="outside")
     fig.update_layout(showlegend=False, plot_bgcolor="white", margin=dict(t=50))
     st.plotly_chart(fig, use_container_width=True)
 
 def grafico_embudo(df: pd.DataFrame, columna: str, titulo: str):
     conteo = df[columna].value_counts().reset_index()
     conteo.columns = ["etapa", "cantidad"]
-    fig = go.Figure(go.Funnel(y=conteo["etapa"], x=conteo["cantidad"], textinfo="value+percent initial",
-                              marker={"color": COLOR_PALETTE[2]}))
+    total = conteo["cantidad"].sum()
+    conteo["porcentaje"] = (conteo["cantidad"] / total * 100).round(1)
+    conteo["texto"] = conteo["cantidad"].astype(str) + " (" + conteo["porcentaje"].astype(str) + "%)"
+
+    fig = go.Figure(go.Funnel(
+        y=conteo["etapa"],
+        x=conteo["cantidad"],
+        text=conteo["texto"],
+        textposition="outside",
+        marker={"color": COLOR_PALETTE[2]}
+    ))
+
     fig.update_layout(title=f"<b>{titulo}</b>", margin=dict(t=50))
     st.plotly_chart(fig, use_container_width=True)
 
 def grafico_anillo(df: pd.DataFrame, columna: str, titulo: str):
     conteo = df[columna].value_counts().reset_index()
     conteo.columns = [columna, "cantidad"]
-    fig = px.pie(conteo, names=columna, values="cantidad", hole=0.45,
-                 color_discrete_sequence=COLOR_PALETTE, title=f"<b>{titulo}</b>")
+    conteo["porcentaje"] = (conteo["cantidad"] / conteo["cantidad"].sum() * 100).round(1)
+    conteo["texto"] = conteo[columna] + ": " + conteo["cantidad"].astype(str) + " (" + conteo["porcentaje"].astype(str) + "%)"
+
+    fig = px.pie(
+        conteo,
+        names="texto",
+        values="cantidad",
+        hole=0.45,
+        color_discrete_sequence=COLOR_PALETTE,
+        title=f"<b>{titulo}</b>"
+    )
     fig.update_traces(textinfo="label+percent", textfont_size=12)
     st.plotly_chart(fig, use_container_width=True)
 
@@ -190,7 +231,7 @@ COLUMNAS_TABLA = {
 }
 
 COLUMNAS_GRAFICOS = {
-    "Cronograma": {"barras": "Estado", "anillo": "Estado", "embudo": "Etapa"},
+    "Cronograma": {"barras": "Estado", "barras": "Etapa", "anillo": "Estado", "embudo": "Etapa"},
     "Entregables": {"barras": "ESTADO", "anillo": "ESTADO", "embudo": "ESTADO"},
     "VRM": {"barras": "estado_carpeta", "anillo": "estado_carpeta", "embudo": "estado_carpeta"},
     "Reclamaciones": {"barras": "estado_carpeta", "anillo": "estado_carpeta", "embudo": "estado_carpeta"}
@@ -199,9 +240,28 @@ cols_graficos = COLUMNAS_GRAFICOS.get(mod_actual, {})
 cols_vis = COLUMNAS_TABLA.get(mod_actual, df_filtrado.columns[:5].tolist())
 
 # === Visualización: TABLA ===
+
+colores_cronograma = {
+    "VENCIDO": "#f8d7da",             # rojo claro
+    "PRÓXIMO A VENCER": "#fff3cd",    # amarillo claro
+    "EN GESTIÓN": "#d4edda"           # verde claro
+}
+
 if "Tabla" in vis_seleccionadas:
     st.subheader("📋 Tabla de datos")
-    tabla_resaltada(df_filtrado, columnas=cols_vis)
+    tabla_resaltada(
+        df_filtrado,
+        columnas=cols_vis,
+        col_estado="Estado",
+        colores_estado=colores_cronograma
+    )
+
+tabla_resaltada(
+    df_filtrado,
+    columnas=cols_vis,
+    col_estado="Estado",
+    colores_estado=colores_cronograma
+)
 
 # === Visualización: BARRAS ===
 if "Barras" in vis_seleccionadas and "barras" in cols_graficos:
