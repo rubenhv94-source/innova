@@ -11,6 +11,8 @@ from pytz import timezone
 from datetime import datetime, timedelta
 import streamlit_authenticator as stauth
 
+st.sidebar.info(f"Versión de streamlit-authenticator instalada: {stauth.__version__}")
+
 st.set_page_config(
     page_title="Dashboard Modular",
     page_icon="📊",
