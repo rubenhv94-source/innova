@@ -50,8 +50,8 @@ def cargar_csv(url: str) -> pd.DataFrame:
 URLS = {
     "Cronograma": "https://docs.google.com/spreadsheets/d/e/2PACX-1vThSek_BzK-DeNwhsjcmqSWJLz4vNQ_bBQJ8cXV_pEjCLGN8T64WcIqsLEfQIYcO9dVLCPHfdnNdfhC/pub?gid=1775323779&single=true&output=csv",
     "Entregables": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXU3Fh-35s_7ZysWWnWQpQhhHxMst_qqFznNeBA1xmvMVYpo7yVODZTaHTqh12ptDViA6CYLLaZWre/pub?gid=1749869584&single=true&output=csv",
-    "VRM": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVxG-bO1D5mkgUFCU35drRV4tyXT9aRaW6q4zzWGa9nFAqkLVdZxaIjwD1cEMJIAXuI4xTBlhHS1og/pub?gid=991630809&single=true&output=csv",
-    "Reclamaciones": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVxG-bO1D5mkgUFCU35drRV4tyXT9aRaW6q4zzWGa9nFAqkLVdZxaIjwD1cEMJIAXuI4xTBlhHS1og/pub?gid=991630809&single=true&output=csv"
+    "VRM": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1ZNrmbDDZPZbj0-ovO6HRgW7m2MAp3efItgdv8QjOny04F4D5knQ4E2RvMcmQB-L6OS00F13xiiWQ/pub?gid=1175528082&single=true&output=csv",
+    "Reclamaciones": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1ZNrmbDDZPZbj0-ovO6HRgW7m2MAp3efItgdv8QjOny04F4D5knQ4E2RvMcmQB-L6OS00F13xiiWQ/pub?gid=1175528082&single=true&output=csv"
 }
 
 @st.cache_data(ttl=600)
@@ -169,11 +169,11 @@ vis_default = {
 }.get(mod_actual, ["Tabla"])
 
 opciones_vis = ["Tabla", "Barras", "Anillo", "Embudo"]
-vis_seleccionadas = st.multiselect("Visualizaciones:", opciones_vis, default=vis_default)
+#vis_seleccionadas = st.multiselect("Visualizaciones:", opciones_vis, default=vis_default)
 
 if "Tabla" in vis_seleccionadas:
     st.subheader("📋 Tabla de datos")
-    cols_vis = st.multiselect("Columnas a mostrar:", df_filtrado.columns.tolist(), default=df_filtrado.columns[:5].tolist())
+    #cols_vis = st.multiselect("Columnas a mostrar:", df_filtrado.columns.tolist(), default=df_filtrado.columns[:5].tolist())
     tabla_resaltada(df_filtrado, columnas=cols_vis, col_semaforo=df_filtrado.columns[-1])
 
     st.download_button("📥 Descargar tabla", data=df_filtrado.to_csv(index=False).encode("utf-8"),
