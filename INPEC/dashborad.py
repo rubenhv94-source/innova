@@ -209,9 +209,9 @@ if df_base.empty:
 # Filtros
 
 COLUMNAS_FILTRO = {
-    "Cronograma": ["NO.", "Etapa", "Actividad", "F INICIO P", "F FIN P", "Estado", "Fecha de cumplimiento", "Responsable_contractual"],
-    "Entregables": ["NO. DE ENTREGABLE", "NO. DE PAGO", "ENTREGABLE", "ESTADO"],
-    "VRM": ["convocatoria", "numero_opec", "nivel_x", "estado_rm", "estado_carpeta"],
+    "Cronograma": ["Etapa", "Actividad", "Estado", "Responsable_contractual"],
+    "Entregables": ["NO. DE PAGO", "NO. DE ENTREGABLE", "ENTREGABLE", "ESTADO"],
+    "VRM": ["estado_carpeta", "numero_opec", "nivel_x", "estado_rm"],
     #"Reclamaciones": ["numero_opec", "nivel_x", "estado_carpeta"]
 }
 
