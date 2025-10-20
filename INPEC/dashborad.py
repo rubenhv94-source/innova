@@ -227,14 +227,14 @@ COLUMNAS_TABLA = {
     "Cronograma": ["NO.", "Etapa", "Actividad", "F INICIO P", "F FIN P", "Estado", "Fecha de cumplimiento", "Responsable_contractual"],
     "Entregables": ["NO. DE ENTREGABLE", "NO. DE PAGO", "ENTREGABLE", "ESTADO"],
     "VRM": ["convocatoria", "numero_opec", "nivel_x", "estado_rm", "estado_carpeta"],
-    "Reclamaciones": ["numero_opec", "nivel_x", "estado_carpeta"]
+    #"Reclamaciones": ["numero_opec", "nivel_x", "estado_carpeta"]
 }
 
 COLUMNAS_GRAFICOS = {
     "Cronograma": {"barras": ["Estado", "Etapa"]},
     "Entregables": {"barras": ["ESTADO"], "anillo": "NO. DE PAGO"},
-    "VRM": {"anillo": "estado_rm", "embudo": "estado_carpeta"},
-    "Reclamaciones": {"barras": "estado_carpeta", "anillo": "estado_carpeta", "embudo": "estado_carpeta"}
+    "VRM": {"anillo": "estado_rm", "embudo": "estado_carpeta"}#,
+    #"Reclamaciones": {"barras": "estado_carpeta", "anillo": "estado_carpeta", "embudo": "estado_carpeta"}
 }
 cols_graficos = COLUMNAS_GRAFICOS.get(mod_actual, {})
 cols_vis = COLUMNAS_TABLA.get(mod_actual, df_filtrado.columns[:5].tolist())
