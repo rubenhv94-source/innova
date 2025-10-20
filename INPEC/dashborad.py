@@ -117,8 +117,8 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
 
         resultados = []
 
-        for usuario in df_revisiones["usuario"].unique():
-            user_df = df_revisiones[df_revisiones["usuario"] == usuario]
+        for usuario in df_revisiones["USUARIO"].unique():
+            user_df = df_revisiones[df_revisiones["USUARIO"] == usuario]
             revisadas = user_df["estado_carpeta"].isin(condiciones["Auditoría"]).sum()  # Puedes ajustar a otra vista
             resultados.append({"USUARIO": usuario, "Carpetas Revisadas": revisadas})
 
@@ -350,8 +350,8 @@ if "Barras" in vis_seleccionadas and "barras" in cols_graficos:
 
 # === Visualización: EMBUDO ===
 if "Embudo" in vis_seleccionadas and "embudo" in cols_graficos:
-    grafico_embudo(df_filtrado, columna=cols_graficos["embudo"], titulo=f"Embudo por {cols_graficos["embudo"]}")
+    grafico_embudo(df_filtrado, columna=cols_graficos["embudo"], titulo=f"Embudo por {cols_graficos['embudo']}")
 
 # === Visualización: ANILLO ===
 if "Anillo" in vis_seleccionadas and "anillo" in cols_graficos:
-    grafico_anillo(df_filtrado, columna=cols_graficos["anillo"], titulo=f"Distribución por {cols_graficos["anillo"]}")
+    grafico_anillo(df_filtrado, columna=cols_graficos["anillo"], titulo=f"Distribución por {cols_graficos['anillo']}")
