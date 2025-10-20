@@ -138,8 +138,12 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
         # Unir metas y revisiones
         resumen = pd.merge(metas_usuario, df_revisadas, on="USUARIO", how="outer").fillna(0)
 
-        resumen["Meta Proyectada a la Fecha"] = resumen["Meta Proyectada a la Fecha"].astype(int)
-        resumen["Carpetas Revisadas"] = resumen["Carpetas Revisadas"].astype(int)
+        resumen["Meta Proyectada a la Fecha"] = (
+            pd.to_numeric(resumen["Meta Proyectada a la Fecha"], errors="coerce").fillna(0).astype(int)
+        )
+        resumen["Carpetas Revisadas"] = (
+            pd.to_numeric(resumen["Carpetas Revisadas"], errors="coerce").fillna(0).astype(int)
+        )
         resumen["% Avance"] = np.where(
             resumen["Meta Proyectada a la Fecha"] == 0,
             0,
