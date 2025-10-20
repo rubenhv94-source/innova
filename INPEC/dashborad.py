@@ -107,7 +107,6 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
 
         # Contar revisiones por usuario desde df VRM
         df["estado_carpeta"] = df["estado_carpeta"].str.lower()
-        df_revisiones = df.copy()
         
         condiciones_estado = [
             df["estado_carpeta"].isin(["calificada", "aprobada", "auditada"]),
@@ -125,6 +124,7 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
             "Auditoría": ["auditada"]
         }
         
+        df_revisiones = df.copy()
         resultados = []
 
         for usuario in df_revisiones["USUARIO"].unique():
