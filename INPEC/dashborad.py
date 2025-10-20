@@ -252,11 +252,15 @@ if "Tabla" in vis_seleccionadas:
     )
 
 # === Visualización: BARRAS ===
+#if "Barras" in vis_seleccionadas and "barras" in cols_graficos:
+#    cols = st.columns(len(cols_graficos["barras"]))
+#    for i, col in enumerate(cols_graficos["barras"]):
+#        with cols[i]:
+#            grafico_barras(df_filtrado, columna=col, titulo=f"Distribución por {col}")
+
 if "Barras" in vis_seleccionadas and "barras" in cols_graficos:
-    cols = st.columns(len(cols_graficos["barras"]))
-    for i, col in enumerate(cols_graficos["barras"]):
-        with cols[i]:
-            grafico_barras(df_filtrado, columna=col, titulo=f"Distribución por {col}")
+    for col in cols_graficos["barras"]:
+        grafico_barras(df_filtrado, columna=col, titulo=f"Distribución por {col}")
 
 # === Visualización: ANILLO ===
 if "Anillo" in vis_seleccionadas and "anillo" in cols_graficos:
