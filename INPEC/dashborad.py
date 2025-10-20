@@ -96,7 +96,7 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
         fecha_referencia = hoy - timedelta(days=1)
 
         # Asegurar tipo de fecha
-        archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
+        archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"]).dt.date
 
         # Filtrar metas por fecha
         metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_referencia]
@@ -110,9 +110,9 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
         df_revisiones = df.copy()
 
         condiciones = {
-            "Análisis": ["calificadas", "aprobadas", "auditadas"],
-            "Supervisión": ["aprobadas", "auditadas"],
-            "Auditoría": ["auditadas"]
+            "Análisis": ["calificada", "aprobada", "auditada"],
+            "Supervisión": ["aprobada", "auditada"],
+            "Auditoría": ["auditada"]
         }
 
         resultados = []
