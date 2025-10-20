@@ -338,7 +338,16 @@ def grafico_anillo(df: pd.DataFrame, columna: str, titulo: str):
 st.markdown("<h1 style='text-align:center; font-weight:700; color:#1F9924'>Proceso de Selección INPEC Cuerpo de Custodia y Vigilancia 11</h1>", unsafe_allow_html=True)
 st.sidebar.image("assets/Andina_Blanco.png", width=400)
 
-mod_actual = st.tabs("Selecciona módulo:", list(URLS.keys()))
+modulos_con_iconos = {
+    "Cronograma": "🗓️ Cronograma",
+    "Entregables": "✔️ Entregables",
+    "VRM": "📊 VRM"
+}
+
+mod_actual = st.sidebar.radio(
+    "Selecciona módulo:",
+    list(modulos_con_iconos.values())
+)
 
 if st.sidebar.button("🔄 Refrescar datos"):
     st.cache_data.clear()
