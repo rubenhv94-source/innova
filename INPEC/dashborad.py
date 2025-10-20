@@ -211,7 +211,7 @@ st.title(f"{mod_actual}")
 # Visualizaciones por módulo (fijas)
 vis_default = {
     "Cronograma": ["Tabla", "Barras", "Barras", "Anillo", "Embudo"],
-    "Entregables": ["Tabla", "Barras", "Anillo"],
+    "Entregables": ["Tabla", "Barras"],
     "VRM": ["Tabla", "Barras", "Anillo"],
     "Reclamaciones": ["Tabla", "Embudo"]
 }.get(mod_actual, ["Tabla"])
