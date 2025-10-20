@@ -267,44 +267,7 @@ def grafico_anillo(df: pd.DataFrame, columna: str, titulo: str):
     fig.update_traces(textinfo="label+percent", textfont_size=12)
     st.plotly_chart(fig, use_container_width=True)
 
-# ===================================
-# 🔐 AUTENTICACIÓN DE USUARIOS (API moderna v0.6+)
-# ===================================
-import streamlit as st
-import streamlit_authenticator as stauth
 
-# --- Credenciales ---
-credentials = {
-    "usernames": {
-        "usuario1": {
-            "name": "Ruben Herrera",
-            "password": stauth.Hasher.hash("1234")
-        },
-        "usuario2": {
-            "name": "Ana Pérez",
-            "password": stauth.Hasher.hash("abcd")
-        },
-    }
-}
-
-# --- Crear autenticador ---
-authenticator = stauth.Authenticate(
-    credentials=credentials,
-    cookie_name="dashboard_cookie",
-    key="clave_segura_dashboard",
-    cookie_expiry_days=1,
-)
-
-# --- Formulario de login (API nueva) ---
-authenticator.login_form("Inicio de sesión", location="main")
-
-# --- Verificación de autenticación ---
-if authenticator.is_authenticated():
-    authenticator.logout("Cerrar sesión", location="sidebar")
-    st.sidebar.success(f"Sesión iniciada: {authenticator.get_user_name()}")
-else:
-    st.warning("Por favor inicia sesión para continuar.")
-    st.stop()
 
 # ===================================
 # 🚦 NAVEGACIÓN Y RENDER
