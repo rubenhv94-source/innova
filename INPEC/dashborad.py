@@ -211,7 +211,7 @@ st.title(f"{mod_actual}")
 # Visualizaciones por módulo (fijas)
 vis_default = {
     "Cronograma": ["Tabla", "Barras", "Barras", "Anillo", "Embudo"],
-    "Entregables": ["Tabla", "Barras"],
+    "Entregables": ["Tabla", "Barras", "Anillo"],
     "VRM": ["Tabla", "Barras", "Anillo"],
     "Reclamaciones": ["Tabla", "Embudo"]
 }.get(mod_actual, ["Tabla"])
@@ -227,7 +227,7 @@ COLUMNAS_TABLA = {
 
 COLUMNAS_GRAFICOS = {
     "Cronograma": {"barras": ["Estado", "Etapa"]},
-    "Entregables": {"barras": "ESTADO"},
+    "Entregables": {"barras": "ESTADO", "anillo": "NO. DE PAGO"},
     "VRM": {"barras": "estado_carpeta", "anillo": "estado_carpeta", "embudo": "estado_carpeta"},
     "Reclamaciones": {"barras": "estado_carpeta", "anillo": "estado_carpeta", "embudo": "estado_carpeta"}
 }
