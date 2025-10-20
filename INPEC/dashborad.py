@@ -252,9 +252,12 @@ if "Tabla" in vis_seleccionadas:
     )
 
 # === Visualización: BARRAS ===
+#if "Barras" in vis_seleccionadas and "barras" in cols_graficos:
+#    for col in cols_graficos["barras"]:
+#        grafico_barras(df_filtrado, columna=col, titulo=f"Distribución por {col}")
+
 if "Barras" in vis_seleccionadas and "barras" in cols_graficos:
-    for col in cols_graficos["barras"]:
-        grafico_barras(df_filtrado, columna=col, titulo=f"Distribución por {col}")
+    grafico_barras(df_filtrado, columna=cols_graficos, titulo=f"Distribución por {cols_graficos}")
 
 # === Visualización: ANILLO ===
 if "Anillo" in vis_seleccionadas and "anillo" in cols_graficos:
