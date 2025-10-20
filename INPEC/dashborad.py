@@ -206,8 +206,16 @@ if df_base.empty:
     st.warning("No hay datos disponibles.")
     st.stop()
 
-# Filtros automáticos
-cols_filtro = detectar_columnas_filtrables(df_base)
+# Filtros
+
+COLUMNAS_FILTRO = {
+    "Cronograma": ["NO.", "Etapa", "Actividad", "F INICIO P", "F FIN P", "Estado", "Fecha de cumplimiento", "Responsable_contractual"],
+    "Entregables": ["NO. DE ENTREGABLE", "NO. DE PAGO", "ENTREGABLE", "ESTADO"],
+    "VRM": ["convocatoria", "numero_opec", "nivel_x", "estado_rm", "estado_carpeta"],
+    #"Reclamaciones": ["numero_opec", "nivel_x", "estado_carpeta"]
+}
+
+cols_filtro = COLUMNAS_FILTRO.get(mod_actual, [])
 filtros = generar_filtros_sidebar(df_base, cols_filtro, mod_actual)
 df_filtrado = aplicar_filtros_dinamicos(df_base, filtros)
 
