@@ -273,7 +273,7 @@ def grafico_anillo(df: pd.DataFrame, columna: str, titulo: str):
     st.plotly_chart(fig, use_container_width=True)
 
 # ===================================
-# 🔐 AUTENTICACIÓN UNIVERSAL STREAMLIT-AUTHENTICATOR
+# 🔐 AUTENTICACIÓN STREAMLIT-AUTHENTICATOR (CLOUD 0.4.2)
 # ===================================
 import streamlit as st
 import streamlit_authenticator as stauth
@@ -281,47 +281,36 @@ import streamlit_authenticator as stauth
 # --- Credenciales ---
 credentials = {
     "usernames": {
-        "usuario1": {"name": "Ruben Herrera", "password": stauth.Hasher.hash("1234")},
-        "usuario2": {"name": "Ana Pérez", "password": stauth.Hasher.hash("abcd")},
+        "usuario1": {
+            "name": "Ruben Herrera",
+            "password": stauth.Hasher.hash("1234")
+        },
+        "usuario2": {
+            "name": "Ana Pérez",
+            "password": stauth.Hasher.hash("abcd")
+        }
     }
 }
 
-# --- Crear autenticador (API v0.4–0.5) ---
+# --- Crear autenticador ---
 authenticator = stauth.Authenticate(
     credentials,
-    "dashboard_cookie",
-    "clave_segura_dashboard",
-    1,  # expiración en días
+    "dashboard_cookie",      # nombre cookie
+    "clave_segura_dashboard",  # clave secreta
+    1                         # expiración en días
 )
 
-# --- Llamada flexible al método login ---
+# --- Formulario de inicio de sesión ---
 try:
-    # Intento versión que retorna 3 valores
-    resultado = authenticator.login("Inicio de sesión", location="main")
-    if isinstance(resultado, tuple):
-        if len(resultado) == 3:
-            name, auth_status, username = resultado
-        elif len(resultado) == 2:
-            name, auth_status = resultado
-            username = None
-        else:
-            name = auth_status = username = None
-    else:
-        # Caso de versiones nuevas donde no retorna nada
-        name = getattr(authenticator, "name", None)
-        auth_status = getattr(authenticator, "authentication_status", None)
-        username = getattr(authenticator, "username", None)
+    name, authentication_status = authenticator.login("Inicio de sesión", location="main")
 except TypeError:
-    # Caso extremo (API más nueva con login_form)
-    authenticator.login_form("Inicio de sesión", location="main")
-    name = getattr(authenticator, "name", None)
-    auth_status = getattr(authenticator, "authentication_status", None)
-    username = getattr(authenticator, "username", None)
+    # Algunas builds devuelven 3 valores, por compatibilidad
+    name, authentication_status, _ = authenticator.login("Inicio de sesión", location="main")
 
 # --- Control de acceso ---
-if auth_status:
+if authentication_status:
     authenticator.logout("Cerrar sesión", location="sidebar")
-    st.sidebar.success(f"Sesión iniciada: {name or username}")
+    st.sidebar.success(f"Sesión iniciada: {name}")
 
 
     # ===================================
