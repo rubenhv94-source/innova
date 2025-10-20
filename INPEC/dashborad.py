@@ -98,7 +98,9 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
 
         # Asegurar tipo de fecha
         archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"]).dt.date
-        archivo_metas["META EQUIPO A LA FECHA"] = archivo_metas["META EQUIPO A LA FECHA"].astype(int)
+        archivo_metas["META EQUIPO A LA FECHA" = (
+            pd.to_numeric(archivo_metas["META EQUIPO A LA FECHA").fillna(0).astype(int)
+        )
 
         # Filtrar metas por fecha
         metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_referencia]
