@@ -192,8 +192,7 @@ cols_vis = COLUMNAS_TABLA.get(mod_actual, df_filtrado.columns[:5].tolist())
 # === Visualización: TABLA ===
 if "Tabla" in vis_seleccionadas:
     st.subheader("📋 Tabla de datos")
-    df_filtrado_E = df_filtrado.copy()
-    tabla_resaltada(df_filtrado_E, columnas=cols_vis)
+    tabla_resaltada(df_filtrado, columnas=cols_vis)
 
 # === Visualización: BARRAS ===
 if "Barras" in vis_seleccionadas and "barras" in cols_graficos:
