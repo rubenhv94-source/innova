@@ -181,7 +181,7 @@ if "Tabla" in vis_seleccionadas:
         "Reclamaciones": ["OPEC", "NIVEL", "estado_carpeta"]
     }
     cols_vis = COLUMNAS_TABLA.get(mod_actual, df_filtrado.columns[:5].tolist())
-    tabla_resaltada(df_filtrado, columnas=cols_vis, col_semaforo=df_filtrado.columns[-1])
+    tabla_resaltada(df_filtrado, columnas=cols_vis, col_semaforo=df_filtrado["Estado"])
 
     #st.download_button("📥 Descargar tabla", data=df_filtrado.to_csv(index=False).encode("utf-8"), file_name=f"{mod_actual}_filtrado.csv", mime="text/csv", use_container_width=True)
 
