@@ -176,15 +176,15 @@ vis_seleccionadas = vis_default
 COLUMNAS_TABLA = {
     "Cronograma": ["NO.", "Etapa", "Actividad", "F INICIO P", "F FIN P", "Estado", "Fecha de cumplimiento", "Responsable_contractual"],
     "Entregables": ["NO. DE ENTREGABLE", "NO. DE PAGO", "ENTREGABLE", "ESTADO"],
-    "VRM": ["OPEC", "NIVEL", "estado_carpeta"],
-    "Reclamaciones": ["OPEC", "NIVEL", "estado_carpeta"]
+    "VRM": ["numero_opec", "nivel_x", "estado_carpeta"],
+    "Reclamaciones": ["numero_opec", "nivel_x", "estado_carpeta"]
 }
 
 COLUMNAS_GRAFICOS = {
     "Cronograma": {"barras": "Estado", "anillo": "Estado", "embudo": "Etapa"},
     "Entregables": {"barras": "ESTADO", "anillo": "ESTADO", "embudo": "ESTADO"},
-    "VRM": {"barras": "estado_carpeta", "anillo": "NIVEL", "embudo": "OPEC"},
-    "Reclamaciones": {"barras": "estado_carpeta", "anillo": "NIVEL", "embudo": "OPEC"}
+    "VRM": {"barras": "estado_carpeta", "anillo": "estado_carpeta", "embudo": "estado_carpeta"},
+    "Reclamaciones": {"barras": "estado_carpeta", "anillo": "estado_carpeta", "embudo": "estado_carpeta"}
 }
 cols_graficos = COLUMNAS_GRAFICOS.get(mod_actual, {})
 cols_vis = COLUMNAS_TABLA.get(mod_actual, df_filtrado.columns[:5].tolist())
