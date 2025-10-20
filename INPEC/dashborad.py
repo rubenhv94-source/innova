@@ -266,16 +266,16 @@ def grafico_anillo(df: pd.DataFrame, columna: str, titulo: str):
     st.plotly_chart(fig, use_container_width=True)
 
 # ===================================
-# 🔐 AUTENTICACIÓN DE USUARIOS (API nueva)
+# 🔐 AUTENTICACIÓN DE USUARIOS (v0.5+)
 # ===================================
 import streamlit_authenticator as stauth
 
-# --- Credenciales con estructura nueva ---
+# --- Credenciales ---
 credentials = {
     "usernames": {
         "usuario1": {
             "name": "Ruben Herrera",
-            "password": stauth.Hasher.hash("1234")  # se cifra al vuelo
+            "password": stauth.Hasher.hash("1234")
         },
         "usuario2": {
             "name": "Ana Pérez",
@@ -284,25 +284,28 @@ credentials = {
     }
 }
 
-# --- Crear autenticador (API v0.4+) ---
+# --- Inicializar autenticador ---
 authenticator = stauth.Authenticate(
     credentials=credentials,
     cookie_name="dashboard_cookie",
-    key="firma_segura_dashboard",
+    key="clave_segura_dashboard",
     cookie_expiry_days=1,
 )
 
-# --- Formulario de inicio de sesión ---
-nombre, estado_autenticacion = authenticator.login("Inicio de sesión", location="main")
+# --- Mostrar formulario de login ---
+authenticator.login("Inicio de sesión", location="main")
 
-if estado_autenticacion:
-    authenticator.logout("Cerrar sesión", "sidebar")
-    st.sidebar.success(f"Sesión iniciada: {nombre}")
+# --- Verificar estado ---
+if authenticator.authentication_status:
+    authenticator.logout("Cerrar sesión", location="sidebar")
+    st.sidebar.success(f"Sesión iniciada: {authenticator.name}")
+
+elif authenticator.authentication_status is False:
+    st.error("Usuario o contraseña incorrectos.")
+elif authenticator.authentication_status is None:
+    st.warning("Por favor inicia sesión para continuar.")
+    st.stop()
 else:
-    if estado_autenticacion is False:
-        st.error("Usuario o contraseña incorrectos.")
-    elif estado_autenticacion is None:
-        st.warning("Por favor inicia sesión para continuar.")
     st.stop()
 
 # ===================================
