@@ -69,7 +69,7 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
 
     if modulo == "Entregables":
         df["ESTADO"] = np.where((df["REALIZADO POR LA FUAA"] == "TRUE")&(df["APROBADO POR LA CNSC"] == "TRUE"), "Aprobado", 
-                                np.where((df["REALIZADO POR LA FUAA"] == "TRUE")&(df["APROBADO POR LA CNSC"] == "FALSO")&(df["OBSERVACIÓN Y/O STATUS"].str.lower().str.contains("rechaz")), "Rechazado",
+                                np.where((df["REALIZADO POR LA FUAA"] == "TRUE")&(df["APROBADO POR LA CNSC"] == "FALSE")&(df["OBSERVACIÓN Y/O STATUS"].str.lower().str.contains("rechaz")), "Rechazado",
                                         np.where(df["REALIZADO POR LA FUAA"] == "TRUE", "Entregado", "Pendiente")))
     
     return df
