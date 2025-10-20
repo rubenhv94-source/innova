@@ -38,7 +38,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-COLOR_PALETTE = px.colors.sequential.Greens[::-1]
+COLOR_PALETTE = px.colors.sequential.YIGn[::-1]
 
 # ===================================
 # 📥 CARGA DE DATOS
