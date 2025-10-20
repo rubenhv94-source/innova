@@ -145,6 +145,7 @@ def grafico_anillo(df: pd.DataFrame, columna: str, titulo: str):
 # ===================================
 # 🚦 NAVEGACIÓN Y RENDER
 # ===================================
+st.title("Proceso de Selección INPEC Cuerpo de Custodia y Vigilancia 11")
 st.sidebar.title("🔎 Navegación")
 mod_actual = st.sidebar.radio("Selecciona módulo:", list(URLS.keys()))
 
@@ -169,7 +170,7 @@ cols_filtro = detectar_columnas_filtrables(df_base)
 filtros = generar_filtros_sidebar(df_base, cols_filtro, mod_actual)
 df_filtrado = aplicar_filtros_dinamicos(df_base, filtros)
 
-st.title(f"📌 {mod_actual}")
+st.title(f"{mod_actual}")
 
 # Visualizaciones por módulo (fijas)
 vis_default = {
