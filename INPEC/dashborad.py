@@ -13,7 +13,7 @@ import streamlit_authenticator as stauth
 import importlib.metadata as metadata
 
 try:
-    version_auth = importlib.metadata.version("streamlit-authenticator")
+    version_auth = metadata.version("streamlit-authenticator")
     st.sidebar.info(f"Versión de streamlit-authenticator instalada: {version_auth}")
 except Exception as e:
     st.sidebar.error(f"No se pudo obtener la versión: {e}")
