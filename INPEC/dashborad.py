@@ -38,7 +38,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-COLOR_PALETTE = px.colors.sequential.Darkmint
+COLOR_PALETTE = px.colors.sequential.Emrld
 
 # ===================================
 # 📥 CARGA DE DATOS
