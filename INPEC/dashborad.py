@@ -168,25 +168,32 @@ vis_default = {
     "Reclamaciones": ["Tabla", "Embudo"]
 }.get(mod_actual, ["Tabla"])
 
-opciones_vis = ["Tabla", "Barras", "Anillo", "Embudo"]
-vis_seleccionadas = st.multiselect("Visualizaciones:", opciones_vis, default=vis_default)
+#opciones_vis = ["Tabla", "Barras", "Anillo", "Embudo"]
+#vis_seleccionadas = st.multiselect("Visualizaciones:", opciones_vis, default=vis_default)
+vis_seleccionadas = vis_default
 
 if "Tabla" in vis_seleccionadas:
     st.subheader("📋 Tabla de datos")
-    cols_vis = st.multiselect("Columnas a mostrar:", df_filtrado.columns.tolist(), default=df_filtrado.columns[:5].tolist())
+    COLUMNAS_TABLA = {
+        "Cronograma": ["Etapa", "Estado", "Responsable"],
+        "Entregables": ["NO. DE PAGO", "RESPONSABLE", "FECHA"],
+        "VRM": ["OPEC", "NIVEL", "estado_carpeta"],
+        "Reclamaciones": ["OPEC", "NIVEL", "estado_carpeta"]
+    }
+    cols_vis = COLUMNAS_TABLA.get(mod_actual, df_filtrado.columns[:5].tolist())
     tabla_resaltada(df_filtrado, columnas=cols_vis, col_semaforo=df_filtrado.columns[-1])
 
-    st.download_button("📥 Descargar tabla", data=df_filtrado.to_csv(index=False).encode("utf-8"),
-                       file_name=f"{mod_actual}_filtrado.csv", mime="text/csv", use_container_width=True)
+    #st.download_button("📥 Descargar tabla", data=df_filtrado.to_csv(index=False).encode("utf-8"), file_name=f"{mod_actual}_filtrado.csv", mime="text/csv", use_container_width=True)
 
-if "Barras" in vis_seleccionadas:
-    col_bar = st.selectbox("Columna para Barras", df_filtrado.columns, key="col_barras")
-    grafico_barras(df_filtrado, columna=col_bar, titulo="Distribución")
+COLUMNAS_GRAFICOS = {
+    "Cronograma": {"barras": "Estado", "anillo": "Responsable", "embudo": "Etapa"},
+    "Entregables": {"barras": "RESPONSABLE", "anillo": "NO. DE PAGO", "embudo": "FECHA"},
+    "VRM": {"barras": "estado_carpeta", "anillo": "NIVEL", "embudo": "OPEC"},
+    "Reclamaciones": {"barras": "estado_carpeta", "anillo": "NIVEL", "embudo": "OPEC"}
+}
+cols_graficos = COLUMNAS_GRAFICOS.get(mod_actual, {})
 
-if "Anillo" in vis_seleccionadas:
-    col_ring = st.selectbox("Columna para Anillo", df_filtrado.columns, key="col_anillo")
-    grafico_anillo(df_filtrado, columna=col_ring, titulo="Distribución Anillo")
-
-if "Embudo" in vis_seleccionadas:
-    col_funnel = st.selectbox("Columna para Embudo", df_filtrado.columns, key="col_embudo")
-    grafico_embudo(df_filtrado, columna=col_funnel, titulo="Embudo por etapa")
+# Luego en cada bloque
+grafico_barras(df_filtrado, columna=cols_graficos.get("barras", df_filtrado.columns[0]), titulo="Distribución")
+grafico_anillo(df_filtrado, columna=cols_graficos.get("anillo", df_filtrado.columns[1]), titulo="Distribución Anillo")
+grafico_embudo(df_filtrado, columna=cols_graficos.get("embudo", df_filtrado.columns[2]), titulo="Embudo por etapa")
