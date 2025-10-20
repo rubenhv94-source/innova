@@ -7,6 +7,8 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import date
+from pytz import timezone
+from datetime import datetime, timedelta
 
 st.set_page_config(
     page_title="Dashboard Modular",
@@ -59,6 +61,9 @@ URLS = {
     #"Reclamaciones": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1ZNrmbDDZPZbj0-ovO6HRgW7m2MAp3efItgdv8QjOny04F4D5knQ4E2RvMcmQB-L6OS00F13xiiWQ/pub?gid=1175528082&single=true&output=csv"
 }
 
+hoja_metas = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1ZNrmbDDZPZbj0-ovO6HRgW7m2MAp3efItgdv8QjOny04F4D5knQ4E2RvMcmQB-L6OS00F13xiiWQ/pub?gid=1567229219&single=true&output=csv"
+archivo_metas = cargar_csv(hoja_metas)
+
 @st.cache_data(ttl=600)
 def get_datos_por_modulo(modulo: str) -> pd.DataFrame:
     url = URLS.get(modulo)
@@ -73,10 +78,66 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
         df["Fecha Inicio"] = pd.to_datetime(df["Fecha Inicio"], errors="coerce")   
 
     if modulo == "Entregables":
-        df["ESTADO"] = np.where((df["REALIZADO POR LA FUAA"] == "TRUE")&(df["APROBADO POR LA CNSC"] == "TRUE"), "Aprobado", 
-                                np.where((df["REALIZADO POR LA FUAA"] == "TRUE")&(df["APROBADO POR LA CNSC"] == "FALSE")&(df["OBSERVACIÓN Y/O STATUS"].str.lower().str.contains("rechaz")), "Rechazado",
-                                        np.where(df["REALIZADO POR LA FUAA"] == "TRUE", "Entregado", "Pendiente")))
-    
+        df["ESTADO"] = np.where(
+            (df["REALIZADO POR LA FUAA"] == "TRUE") & (df["APROBADO POR LA CNSC"] == "TRUE"), "Aprobado",
+            np.where(
+                (df["REALIZADO POR LA FUAA"] == "TRUE") & 
+                (df["APROBADO POR LA CNSC"] == "FALSE") & 
+                (df["OBSERVACIÓN Y/O STATUS"].str.lower().str.contains("rechaz")),
+                "Rechazado",
+                np.where(df["REALIZADO POR LA FUAA"] == "TRUE", "Entregado", "Pendiente")
+            )
+        )
+
+    if modulo == "VRM":
+        # Obtener fecha de ayer en zona Bogotá
+        tz = timezone("America/Bogota")
+        hoy = datetime.now(tz).date()
+        fecha_referencia = hoy - timedelta(days=1)
+
+        # Asegurar tipo de fecha
+        archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
+
+        # Filtrar metas por fecha
+        metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_referencia]
+
+        # Agrupar por usuario
+        metas_usuario = metas_dia.groupby("USUARIO")["META EQUIPO A LA FECHA"].sum().reset_index()
+        metas_usuario.rename(columns={"META EQUIPO A LA FECHA": "Meta Proyectada a la Fecha"}, inplace=True)
+
+        # Contar revisiones por usuario desde df VRM
+        df["estado_carpeta"] = df["estado_carpeta"].str.lower()
+        df_revisiones = df.copy()
+
+        condiciones = {
+            "Análisis": ["calificadas", "aprobadas", "auditadas"],
+            "Supervisión": ["aprobadas", "auditadas"],
+            "Auditoría": ["auditadas"]
+        }
+
+        resultados = []
+
+        for usuario in df_revisiones["usuario"].unique():
+            user_df = df_revisiones[df_revisiones["usuario"] == usuario]
+            revisadas = user_df["estado_carpeta"].isin(condiciones["Auditoría"]).sum()  # Puedes ajustar a otra vista
+            resultados.append({"USUARIO": usuario, "Carpetas Revisadas": revisadas})
+
+        df_revisadas = pd.DataFrame(resultados)
+
+        # Unir metas y revisiones
+        resumen = pd.merge(metas_usuario, df_revisadas, on="USUARIO", how="outer").fillna(0)
+
+        resumen["Meta Proyectada a la Fecha"] = resumen["Meta Proyectada a la Fecha"].astype(int)
+        resumen["Carpetas Revisadas"] = resumen["Carpetas Revisadas"].astype(int)
+        resumen["% Avance"] = np.where(
+            resumen["Meta Proyectada a la Fecha"] == 0,
+            0,
+            (resumen["Carpetas Revisadas"] / resumen["Meta Proyectada a la Fecha"] * 100).round(1)
+        )
+
+        # Guardar en sesión para usarlo donde se necesite
+        st.session_state["df_resumen_vrm"] = resumen
+
     return df
 
 def detectar_columnas_filtrables(df: pd.DataFrame, max_unicos=20) -> list:
@@ -233,6 +294,11 @@ if mod_actual == "VRM":
     c2.metric("✔️ Meta Ejecutada", f"{ejecutadas:,}".replace(",", "."))
     c3.metric("↔️ Diferencia", f"{diferencia:,}".replace(",", "."))
     c4.metric("〽️ Porcentaje", f"{porcentaje:.1f}%")
+
+    st.subheader("📈 Avance por Usuario")
+    resumen = st.session_state.get("df_resumen_vrm")
+    if resumen is not None:
+        st.dataframe(resumen, use_container_width=True, hide_index=True)
 
 # Visualizaciones por módulo (fijas)
 vis_default = {
