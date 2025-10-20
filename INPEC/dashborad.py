@@ -19,7 +19,7 @@ st.markdown("""
 <style>
     .stApp { background-color: #ffffff; padding: 16px; }
     h1, h2, h3 { color: #1F9924; text-align: center; }
-    [data-testid="stSidebar"] { background-color: #e8f5e9; }
+    [data-testid="stSidebar"] { background-color: #8ECD93; }
     .stButton>button {
         background-color: #ffffff !important;
         color: #2e7d32 !important;
