@@ -9,9 +9,6 @@ import plotly.graph_objects as go
 from datetime import date
 from pytz import timezone
 from datetime import datetime, timedelta
-
-! pip install streamlit-authenticator
-
 import streamlit_authenticator as stauth
 
 st.set_page_config(
