@@ -270,29 +270,27 @@ def grafico_anillo(df: pd.DataFrame, columna: str, titulo: str):
 # ===================================
 import streamlit_authenticator as stauth
 
-# --- Usuarios y contraseñas (texto plano para ejemplo) ---
+# --- Configuración básica de usuarios ---
 usuarios = {
     "usuario1": {"nombre": "Ruben Herrera", "contraseña": "1234"},
     "usuario2": {"nombre": "Ana Pérez", "contraseña": "abcd"},
 }
 
-# --- Crear lista de contraseñas en orden ---
+# --- Hashear contraseñas con la nueva API ---
 passwords_list = [u["contraseña"] for u in usuarios.values()]
-
-# --- Generar hashes (una sola vez en ejecución) ---
-hashed_passwords = stauth.Hasher(passwords_list).generate()
+hashed_passwords = [stauth.Hasher.hash(p) for p in passwords_list]  # ✅ compatible con v0.4+
 
 # --- Crear autenticador ---
 authenticator = stauth.Authenticate(
     names=[u["nombre"] for u in usuarios.values()],
     usernames=list(usuarios.keys()),
     passwords=hashed_passwords,
-    cookie_name="login_dashboard",
+    cookie_name="dashboard_cookie",
     key="firma_segura_dashboard",
     cookie_expiry_days=1
 )
 
-# --- Formulario de inicio de sesión ---
+# --- Formulario de login ---
 nombre, estado_autenticacion, usuario = authenticator.login("Inicio de sesión", "main")
 
 if estado_autenticacion:
