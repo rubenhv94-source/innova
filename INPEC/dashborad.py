@@ -273,7 +273,7 @@ def grafico_anillo(df: pd.DataFrame, columna: str, titulo: str):
     st.plotly_chart(fig, use_container_width=True)
 
 # ===================================
-# 🔐 AUTENTICACIÓN STREAMLIT-AUTHENTICATOR (CLOUD 0.4.2)
+# 🔐 AUTENTICACIÓN STREAMLIT CLOUD (build 0.4.x)
 # ===================================
 import streamlit as st
 import streamlit_authenticator as stauth
@@ -294,24 +294,23 @@ credentials = {
 
 # --- Crear autenticador ---
 authenticator = stauth.Authenticate(
-    credentials,
-    "dashboard_cookie",      # nombre cookie
-    "clave_segura_dashboard",  # clave secreta
-    1                         # expiración en días
+    credentials=credentials,
+    cookie_name="dashboard_cookie",
+    key="clave_segura_dashboard",
+    cookie_expiry_days=1,
 )
 
-# --- Formulario de inicio de sesión ---
-try:
-    name, authentication_status = authenticator.login("Inicio de sesión", location="main")
-except TypeError:
-    # Algunas builds devuelven 3 valores, por compatibilidad
-    name, authentication_status, _ = authenticator.login("Inicio de sesión", location="main")
+# --- Mostrar formulario de login ---
+authenticator.login("Inicio de sesión", location="main")
+
+# --- Leer estado desde propiedades (no hay retorno) ---
+auth_status = authenticator.authentication_status
+user_name = authenticator.name
 
 # --- Control de acceso ---
-if authentication_status:
+if auth_status:
     authenticator.logout("Cerrar sesión", location="sidebar")
-    st.sidebar.success(f"Sesión iniciada: {name}")
-
+    st.sidebar.success(f"Sesión iniciada: {user_name}")
 
     # ===================================
     # 🚦 NAVEGACIÓN Y RENDER
