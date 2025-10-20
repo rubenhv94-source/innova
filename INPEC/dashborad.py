@@ -173,7 +173,7 @@ opciones_vis = ["Tabla", "Barras", "Anillo", "Embudo"]
 
 if "Tabla" in vis_seleccionadas:
     st.subheader("📋 Tabla de datos")
-    #cols_vis = st.multiselect("Columnas a mostrar:", df_filtrado.columns.tolist(), default=df_filtrado.columns[:5].tolist())
+    cols_vis = st.multiselect("Columnas a mostrar:", df_filtrado.columns.tolist(), default=df_filtrado.columns[:5].tolist())
     tabla_resaltada(df_filtrado, columnas=cols_vis, col_semaforo=df_filtrado.columns[-1])
 
     st.download_button("📥 Descargar tabla", data=df_filtrado.to_csv(index=False).encode("utf-8"),
