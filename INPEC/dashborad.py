@@ -221,6 +221,13 @@ df_filtrado = aplicar_filtros_dinamicos(df_base, filtros)
 
 st.title(f"{mod_actual}")
 
+if mod_actual == "VRM":
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("🎯 Meta Proyectada", f"{len(df_filtrado):,}".replace(",", "."))
+    c2.metric("✔️ Meta Ejecutada", f"{len(df_filtrado[df_filtrado["estado_carpeta"]=='auditada'):,}".replace(",", "."))
+    c3.metric("↔️ Diferencia", f"{(len(df_filtrado)-len(df_filtrado[df_filtrado["estado_carpeta"]=='auditada')):,}".replace(",", "."))
+    c4.metric("〽️ Porcentaje", f"{(len(df_filtrado[df_filtrado["estado_carpeta"]=='auditada')/len(df_filtrado)):,}".replace(",", "."))
+
 # Visualizaciones por módulo (fijas)
 vis_default = {
     "Cronograma": ["Tabla", "Barras", "Barras"],
