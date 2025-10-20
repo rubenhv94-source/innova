@@ -175,14 +175,14 @@ vis_seleccionadas = vis_default
 # Configuración columnas por módulo
 COLUMNAS_TABLA = {
     "Cronograma": ["NO.", "Etapa", "Actividad", "F INICIO P", "F FIN P", "Estado", "Fecha de cumplimiento", "Responsable_contractual"],
-    "Entregables": ["NO. DE ENTREGABLE", "NO. DE PAGO", "ENTREGABLE", "ESTADO"],
+    "Entregables": ["NO. DE ENTREGABLE", "NO. DE PAGO", "ENTREGABLE"],
     "VRM": ["numero_opec", "nivel_x", "estado_carpeta"],
     "Reclamaciones": ["numero_opec", "nivel_x", "estado_carpeta"]
 }
 
 COLUMNAS_GRAFICOS = {
     "Cronograma": {"barras": "Estado", "anillo": "Estado", "embudo": "Etapa"},
-    "Entregables": {"barras": "ESTADO", "anillo": "ESTADO", "embudo": "ESTADO"},
+    "Entregables": {"barras": "ENTREGABLE", "anillo": "ENTREGABLE", "embudo": "ENTREGABLE"},
     "VRM": {"barras": "estado_carpeta", "anillo": "estado_carpeta", "embudo": "estado_carpeta"},
     "Reclamaciones": {"barras": "estado_carpeta", "anillo": "estado_carpeta", "embudo": "estado_carpeta"}
 }
