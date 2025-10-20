@@ -210,7 +210,7 @@ st.title(f"{mod_actual}")
 
 # Visualizaciones por módulo (fijas)
 vis_default = {
-    "Cronograma": ["Tabla", "Barras", "Anillo", "Embudo"],
+    "Cronograma": ["Tabla", "Barras", "Barras", "Anillo", "Embudo"],
     "Entregables": ["Tabla", "Barras", "Anillo"],
     "VRM": ["Tabla", "Barras", "Anillo"],
     "Reclamaciones": ["Tabla", "Embudo"]
@@ -226,7 +226,7 @@ COLUMNAS_TABLA = {
 }
 
 COLUMNAS_GRAFICOS = {
-    "Cronograma": {"barras": "Estado", "barras": "Etapa", "anillo": "Estado", "embudo": "Etapa"},
+    "Cronograma": {"barras": ["Estado", "Etapa"], "anillo": "Estado", "embudo": "Etapa"},
     "Entregables": {"barras": "ESTADO", "anillo": "ESTADO", "embudo": "ESTADO"},
     "VRM": {"barras": "estado_carpeta", "anillo": "estado_carpeta", "embudo": "estado_carpeta"},
     "Reclamaciones": {"barras": "estado_carpeta", "anillo": "estado_carpeta", "embudo": "estado_carpeta"}
@@ -253,11 +253,10 @@ if "Tabla" in vis_seleccionadas:
 
 # === Visualización: BARRAS ===
 if "Barras" in vis_seleccionadas and "barras" in cols_graficos:
-    grafico_barras(df_filtrado, columna=cols_graficos["barras"], titulo="Distribución")
-
-# === Visualización: BARRAS2 ===
-if "Barras" in vis_seleccionadas and "barras" in cols_graficos:
-    grafico_barras(df_filtrado, columna=cols_graficos["barras"], titulo="Distribución")
+    cols = st.columns(len(cols_graficos["barras"]))
+    for i, col in enumerate(cols_graficos["barras"]):
+        with cols[i]:
+            grafico_barras(df_filtrado, columna=col, titulo=f"Distribución por {col}")
 
 # === Visualización: ANILLO ===
 if "Anillo" in vis_seleccionadas and "anillo" in cols_graficos:
