@@ -256,13 +256,6 @@ if "Tabla" in vis_seleccionadas:
         colores_estado=colores_cronograma
     )
 
-tabla_resaltada(
-    df_filtrado,
-    columnas=cols_vis,
-    col_estado="Estado",
-    colores_estado=colores_cronograma
-)
-
 # === Visualización: BARRAS ===
 if "Barras" in vis_seleccionadas and "barras" in cols_graficos:
     grafico_barras(df_filtrado, columna=cols_graficos["barras"], titulo="Distribución")
