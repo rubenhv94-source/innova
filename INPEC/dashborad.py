@@ -336,9 +336,7 @@ def grafico_anillo(df: pd.DataFrame, columna: str, titulo: str):
 # 🚦 NAVEGACIÓN Y RENDER
 # ===================================
 st.markdown("<h1 style='text-align:center; font-weight:700; color:#1F9924'>Proceso de Selección INPEC Cuerpo de Custodia y Vigilancia 11</h1>", unsafe_allow_html=True)
-st.sidebar.image("assets/Andina.png", width=200)
-
-st.markdown("<h1 style='text-align:center; font-weight:700; color:#1F9924'>Proceso de Selección INPEC Cuerpo de Custodia y Vigilancia 11</h1>", unsafe_allow_html=True)
+st.sidebar.image("assets/Andina_Blanco.png", width=200)
 
 mod_actual = st.sidebar.radio("Selecciona módulo:", list(URLS.keys()))
 
