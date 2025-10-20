@@ -56,7 +56,7 @@ URLS = {
     "Cronograma": "https://docs.google.com/spreadsheets/d/e/2PACX-1vThSek_BzK-DeNwhsjcmqSWJLz4vNQ_bBQJ8cXV_pEjCLGN8T64WcIqsLEfQIYcO9dVLCPHfdnNdfhC/pub?gid=1775323779&single=true&output=csv",
     "Entregables": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXU3Fh-35s_7ZysWWnWQpQhhHxMst_qqFznNeBA1xmvMVYpo7yVODZTaHTqh12ptDViA6CYLLaZWre/pub?gid=1749869584&single=true&output=csv",
     "VRM": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1ZNrmbDDZPZbj0-ovO6HRgW7m2MAp3efItgdv8QjOny04F4D5knQ4E2RvMcmQB-L6OS00F13xiiWQ/pub?gid=1175528082&single=true&output=csv",
-    "Reclamaciones": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1ZNrmbDDZPZbj0-ovO6HRgW7m2MAp3efItgdv8QjOny04F4D5knQ4E2RvMcmQB-L6OS00F13xiiWQ/pub?gid=1175528082&single=true&output=csv"
+    #"Reclamaciones": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1ZNrmbDDZPZbj0-ovO6HRgW7m2MAp3efItgdv8QjOny04F4D5knQ4E2RvMcmQB-L6OS00F13xiiWQ/pub?gid=1175528082&single=true&output=csv"
 }
 
 @st.cache_data(ttl=600)
@@ -217,7 +217,7 @@ st.title(f"{mod_actual}")
 vis_default = {
     "Cronograma": ["Tabla", "Barras", "Barras", "Anillo", "Embudo"],
     "Entregables": ["Tabla", "Barras", "Anillo"],
-    "VRM": ["Tabla", "Barras", "Anillo"],
+    "VRM": ["Tabla", "Barras"],
     "Reclamaciones": ["Tabla", "Embudo"]
 }.get(mod_actual, ["Tabla"])
 vis_seleccionadas = vis_default
@@ -226,14 +226,14 @@ vis_seleccionadas = vis_default
 COLUMNAS_TABLA = {
     "Cronograma": ["NO.", "Etapa", "Actividad", "F INICIO P", "F FIN P", "Estado", "Fecha de cumplimiento", "Responsable_contractual"],
     "Entregables": ["NO. DE ENTREGABLE", "NO. DE PAGO", "ENTREGABLE", "ESTADO"],
-    "VRM": ["numero_opec", "nivel_x", "estado_carpeta"],
+    "VRM": ["convocatoria", "numero_opec", "nivel_x", "estado_rm", "estado_carpeta"],
     "Reclamaciones": ["numero_opec", "nivel_x", "estado_carpeta"]
 }
 
 COLUMNAS_GRAFICOS = {
     "Cronograma": {"barras": ["Estado", "Etapa"]},
     "Entregables": {"barras": ["ESTADO"], "anillo": "NO. DE PAGO"},
-    "VRM": {"barras": "estado_carpeta", "anillo": "estado_carpeta", "embudo": "estado_carpeta"},
+    "VRM": {"embudo": "estado_carpeta", "anillo": "estado_rm"},
     "Reclamaciones": {"barras": "estado_carpeta", "anillo": "estado_carpeta", "embudo": "estado_carpeta"}
 }
 cols_graficos = COLUMNAS_GRAFICOS.get(mod_actual, {})
