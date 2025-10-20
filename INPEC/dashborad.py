@@ -101,11 +101,6 @@ def generar_filtros_sidebar(df: pd.DataFrame, claves: list[str], clave_prefix: s
         filtros[col] = selected
     return filtros
 
-def semaforizar(valor: int | float, limites: tuple[int, int]) -> str:
-    if valor <= limites[0]: return "🟢"
-    elif valor <= limites[1]: return "🟡"
-    else: return "🔴"
-
 # ===================================
 # 📊 FUNCIONES DE VISUALIZACIÓN
 # ===================================
@@ -118,13 +113,13 @@ def tabla_resaltada(
     columnas = [c for c in columnas if not c.lower().startswith("unnamed")]
     df_out = df[columnas].copy()
 
-    if col_estado and colores_estado:
-        def color_fila(row):
-            estado = str(row.get(col_estado, "")).strip().upper()
+    if col_estado and colores_estado and col_estado in df_out.columns:
+        def color_columna(val):
+            estado = str(val).strip().upper()
             color = colores_estado.get(estado)
-            return [f"background-color: {color}" if color else "" for _ in row]
+            return f"background-color: {color}" if color else ""
 
-        styled = df_out.style.apply(color_fila, axis=1)
+        styled = df_out.style.applymap(color_columna, subset=[col_estado])
         st.dataframe(styled, use_container_width=True, hide_index=True)
     else:
         st.dataframe(df_out, use_container_width=True, hide_index=True)
@@ -243,7 +238,7 @@ cols_vis = COLUMNAS_TABLA.get(mod_actual, df_filtrado.columns[:5].tolist())
 
 colores_cronograma = {
     "VENCIDO": "#f8d7da",             # rojo claro
-    "PRÓXIMO A VENCER": "#fff3cd",    # amarillo claro
+    "PROXIMO A VENCER": "#fff3cd",    # amarillo claro
     "EN GESTIÓN": "#d4edda"           # verde claro
 }
 
