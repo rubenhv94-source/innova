@@ -226,8 +226,8 @@ COLUMNAS_TABLA = {
 }
 
 COLUMNAS_GRAFICOS = {
-    "Cronograma": {"barras": ["Estado", "Etapa"], "anillo": "Estado", "embudo": "Etapa"},
-    "Entregables": {"barras": "ESTADO", "anillo": "ESTADO", "embudo": "ESTADO"},
+    "Cronograma": {"barras": ["Estado", "Etapa"]},
+    "Entregables": {"barras": "ESTADO"},
     "VRM": {"barras": "estado_carpeta", "anillo": "estado_carpeta", "embudo": "estado_carpeta"},
     "Reclamaciones": {"barras": "estado_carpeta", "anillo": "estado_carpeta", "embudo": "estado_carpeta"}
 }
@@ -252,12 +252,6 @@ if "Tabla" in vis_seleccionadas:
     )
 
 # === Visualización: BARRAS ===
-#if "Barras" in vis_seleccionadas and "barras" in cols_graficos:
-#    cols = st.columns(len(cols_graficos["barras"]))
-#    for i, col in enumerate(cols_graficos["barras"]):
-#        with cols[i]:
-#            grafico_barras(df_filtrado, columna=col, titulo=f"Distribución por {col}")
-
 if "Barras" in vis_seleccionadas and "barras" in cols_graficos:
     for col in cols_graficos["barras"]:
         grafico_barras(df_filtrado, columna=col, titulo=f"Distribución por {col}")
