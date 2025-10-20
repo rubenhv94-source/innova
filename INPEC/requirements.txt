@@ -5,4 +5,4 @@ gspread
 gspread_dataframe
 oauth2client
 numpy
-streamlit-authenticator
+streamlit-authenticator==0.3.2
