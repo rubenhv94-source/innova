@@ -293,7 +293,7 @@ authenticator = stauth.Authenticate(
 )
 
 # --- Formulario de inicio de sesión ---
-nombre, estado_autenticacion, usuario = authenticator.login("Inicio de sesión", location="main")
+nombre, estado_autenticacion = authenticator.login("Inicio de sesión", location="main")
 
 if estado_autenticacion:
     authenticator.logout("Cerrar sesión", "sidebar")
