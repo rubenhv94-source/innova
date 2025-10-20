@@ -215,10 +215,10 @@ st.title(f"{mod_actual}")
 
 # Visualizaciones por módulo (fijas)
 vis_default = {
-    "Cronograma": ["Tabla", "Barras", "Barras", "Anillo", "Embudo"],
+    "Cronograma": ["Tabla", "Barras", "Barras"],
     "Entregables": ["Tabla", "Barras", "Anillo"],
-    "VRM": ["Tabla", "Barras"],
-    "Reclamaciones": ["Tabla", "Embudo"]
+    "VRM": ["Tabla", "Embudo", "Anillo"],
+    #"Reclamaciones": ["Tabla", "Embudo"]
 }.get(mod_actual, ["Tabla"])
 vis_seleccionadas = vis_default
 
