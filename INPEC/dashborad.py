@@ -266,31 +266,33 @@ def grafico_anillo(df: pd.DataFrame, columna: str, titulo: str):
     st.plotly_chart(fig, use_container_width=True)
 
 # ===================================
-# 🔐 AUTENTICACIÓN DE USUARIOS
+# 🔐 AUTENTICACIÓN DE USUARIOS (API nueva)
 # ===================================
 import streamlit_authenticator as stauth
 
-# --- Configuración básica de usuarios ---
-usuarios = {
-    "usuario1": {"nombre": "Ruben Herrera", "contraseña": "1234"},
-    "usuario2": {"nombre": "Ana Pérez", "contraseña": "abcd"},
+# --- Credenciales con estructura nueva ---
+credentials = {
+    "usernames": {
+        "usuario1": {
+            "name": "Ruben Herrera",
+            "password": stauth.Hasher.hash("1234")  # se cifra al vuelo
+        },
+        "usuario2": {
+            "name": "Ana Pérez",
+            "password": stauth.Hasher.hash("abcd")
+        },
+    }
 }
 
-# --- Hashear contraseñas con la nueva API ---
-passwords_list = [u["contraseña"] for u in usuarios.values()]
-hashed_passwords = [stauth.Hasher.hash(p) for p in passwords_list]  # ✅ compatible con v0.4+
-
-# --- Crear autenticador ---
+# --- Crear autenticador (API v0.4+) ---
 authenticator = stauth.Authenticate(
-    names=[u["nombre"] for u in usuarios.values()],
-    usernames=list(usuarios.keys()),
-    passwords=hashed_passwords,
+    credentials=credentials,
     cookie_name="dashboard_cookie",
     key="firma_segura_dashboard",
-    cookie_expiry_days=1
+    cookie_expiry_days=1,
 )
 
-# --- Formulario de login ---
+# --- Formulario de inicio de sesión ---
 nombre, estado_autenticacion, usuario = authenticator.login("Inicio de sesión", "main")
 
 if estado_autenticacion:
