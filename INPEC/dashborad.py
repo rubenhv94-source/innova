@@ -10,6 +10,10 @@ from datetime import date
 from pytz import timezone
 from datetime import datetime, timedelta
 
+! pip install streamlit-authenticator
+
+import streamlit_authenticator as stauth
+
 st.set_page_config(
     page_title="Dashboard Modular",
     page_icon="📊",
@@ -46,6 +50,44 @@ COLOR_PALETTE = [
     "#A1D99B",  # Verde pastel
     "#C7E9C0"   # Verde muy claro
 ]
+
+# ===================================
+# 🔐 AUTENTICACIÓN DE USUARIOS
+# ===================================
+
+# --- Configuración de usuarios ---
+usuarios = {
+    "usuario1": {"nombre": "Ruben Herrera", "contraseña": "1234"},
+    "usuario2": {"nombre": "Ana Pérez", "contraseña": "abcd"}
+}
+
+# --- Generar contraseñas hash seguras ---
+hashed_passwords = stauth.Hasher([u["contraseña"] for u in usuarios.values()]).generate()
+
+# --- Crear autenticador ---
+authenticator = stauth.Authenticate(
+    names=[u["nombre"] for u in usuarios.values()],
+    usernames=list(usuarios.keys()),
+    passwords=hashed_passwords,
+    cookie_name="dashboard_cookie",
+    key="clave_firma_segura",
+    cookie_expiry_days=1
+)
+
+# --- Formulario de inicio de sesión ---
+nombre, estado_autenticacion, usuario = authenticator.login("Inicio de sesión", "main")
+
+if estado_autenticacion:
+    authenticator.logout("Cerrar sesión", "sidebar")
+    st.sidebar.success(f"Sesión iniciada: {nombre}")
+
+    # ✅ Si pasa autenticación, continúa al tablero
+else:
+    if estado_autenticacion is False:
+        st.error("Usuario o contraseña incorrectos.")
+    elif estado_autenticacion is None:
+        st.warning("Por favor inicia sesión para continuar.")
+    st.stop()  # ⛔ Detiene la ejecución si no ha iniciado sesión
 
 # ===================================
 # 📥 CARGA DE DATOS
