@@ -116,7 +116,7 @@ def tabla_resaltada(df: pd.DataFrame, columnas: list[str], col_semaforo: str = N
     if col_semaforo and col_semaforo in df_out.columns:
         df_out["Indicador"] = df_out[col_semaforo].astype(float).apply(lambda x: semaforizar(x, limites))
 
-    st.dataframe(hide_index=True, use_container_width=True)
+    st.dataframe(use_container_width=True)
 
 def grafico_barras(df: pd.DataFrame, columna: str, titulo: str):
     conteo = df[columna].value_counts().reset_index()
