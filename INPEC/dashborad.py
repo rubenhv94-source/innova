@@ -181,8 +181,8 @@ COLUMNAS_TABLA = {
 }
 
 COLUMNAS_GRAFICOS = {
-    "Cronograma": {"barras": "Estado", "anillo": "Responsable", "embudo": "Etapa"},
-    "Entregables": {"barras": "RESPONSABLE", "anillo": "NO. DE PAGO", "embudo": "FECHA"},
+    "Cronograma": {"barras": "Estado", "anillo": "Estado", "embudo": "Etapa"},
+    "Entregables": {"barras": "ESTADO", "anillo": "ESTADO", "embudo": "ESTADO"},
     "VRM": {"barras": "estado_carpeta", "anillo": "NIVEL", "embudo": "OPEC"},
     "Reclamaciones": {"barras": "estado_carpeta", "anillo": "NIVEL", "embudo": "OPEC"}
 }
