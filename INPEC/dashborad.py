@@ -335,8 +335,11 @@ def grafico_anillo(df: pd.DataFrame, columna: str, titulo: str):
 # ===================================
 # 🚦 NAVEGACIÓN Y RENDER
 # ===================================
-st.title("Proceso de Selección INPEC Cuerpo de Custodia y Vigilancia 11")
-st.sidebar.title("🔎 Navegación")
+st.markdown("<h1 style='text-align:center; font-weight:700; color:#1F9924'>Proceso de Selección INPEC Cuerpo de Custodia y Vigilancia 11</h1>", unsafe_allow_html=True)
+st.sidebar.image("assets/Andina.png", width=200)
+
+st.markdown("<h1 style='text-align:center; font-weight:700; color:#1F9924'>Proceso de Selección INPEC Cuerpo de Custodia y Vigilancia 11</h1>", unsafe_allow_html=True)
+
 mod_actual = st.sidebar.radio("Selecciona módulo:", list(URLS.keys()))
 
 if st.sidebar.button("🔄 Refrescar datos"):
