@@ -273,39 +273,55 @@ def grafico_anillo(df: pd.DataFrame, columna: str, titulo: str):
     st.plotly_chart(fig, use_container_width=True)
 
 # ===================================
-# 🔐 AUTENTICACIÓN DE USUARIOS (versión 0.4.2)
+# 🔐 AUTENTICACIÓN UNIVERSAL STREAMLIT-AUTHENTICATOR
 # ===================================
-# Definir credenciales (ejemplo)
+import streamlit as st
+import streamlit_authenticator as stauth
+
+# --- Credenciales ---
 credentials = {
     "usernames": {
-        "usuario1": {
-            "name": "Ruben Herrera",
-            "password": stauth.Hasher.hash("1234")
-        },
-        "usuario2": {
-            "name": "Ana Pérez",
-            "password": stauth.Hasher.hash("abcd")
-        }
+        "usuario1": {"name": "Ruben Herrera", "password": stauth.Hasher.hash("1234")},
+        "usuario2": {"name": "Ana Pérez", "password": stauth.Hasher.hash("abcd")},
     }
 }
 
-# Crear el autenticador
+# --- Crear autenticador (API v0.4–0.5) ---
 authenticator = stauth.Authenticate(
     credentials,
-    "dashboard_cookie",      # nombre de cookie
-    "clave_secreta_dashboard",  # firma/key para cookie
-    1                        # días de expiración
+    "dashboard_cookie",
+    "clave_segura_dashboard",
+    1,  # expiración en días
 )
 
-# Formulario de login
-name, authentication_status, username = authenticator.login(
-    "Inicio de sesión", location="main"
-)
+# --- Llamada flexible al método login ---
+try:
+    # Intento versión que retorna 3 valores
+    resultado = authenticator.login("Inicio de sesión", location="main")
+    if isinstance(resultado, tuple):
+        if len(resultado) == 3:
+            name, auth_status, username = resultado
+        elif len(resultado) == 2:
+            name, auth_status = resultado
+            username = None
+        else:
+            name = auth_status = username = None
+    else:
+        # Caso de versiones nuevas donde no retorna nada
+        name = getattr(authenticator, "name", None)
+        auth_status = getattr(authenticator, "authentication_status", None)
+        username = getattr(authenticator, "username", None)
+except TypeError:
+    # Caso extremo (API más nueva con login_form)
+    authenticator.login_form("Inicio de sesión", location="main")
+    name = getattr(authenticator, "name", None)
+    auth_status = getattr(authenticator, "authentication_status", None)
+    username = getattr(authenticator, "username", None)
 
-# Control de acceso
-if authentication_status:
+# --- Control de acceso ---
+if auth_status:
     authenticator.logout("Cerrar sesión", location="sidebar")
-    st.sidebar.success(f"Sesión iniciada: {name}")
+    st.sidebar.success(f"Sesión iniciada: {name or username}")
 
 
     # ===================================
@@ -421,8 +437,8 @@ if authentication_status:
         grafico_anillo(df_filtrado, columna=cols_graficos["anillo"], titulo=f"Distribución por {cols_graficos['anillo']}")
 
 else:
-    if authentication_status is False:
+    if auth_status is False:
         st.error("Usuario o contraseña incorrectos.")
-    elif authentication_status is None:
+    elif auth_status is None:
         st.warning("Por favor inicia sesión para continuar.")
     st.stop()
