@@ -235,19 +235,19 @@ def aplicar_filtros_dinamicos(df: pd.DataFrame, filtros: dict) -> pd.DataFrame:
 
 def generar_filtros_sidebar(df: pd.DataFrame, claves: list[str], clave_prefix: str) -> dict:
     """
-    Genera filtros dinámicos que pueden resetearse sin recargar la página.
+    Genera filtros dinámicos con botón de borrado sin errores ni recarga completa.
     """
     st.sidebar.markdown("### 🔍 Filtros")
 
-    # Diccionario para guardar las selecciones
+    # Inicializa estructura en session_state
     if "filtros" not in st.session_state:
         st.session_state["filtros"] = {}
-
-    # Inicializa estructura si no existe
     if clave_prefix not in st.session_state["filtros"]:
         st.session_state["filtros"][clave_prefix] = {}
 
     filtros = {}
+    reset_flag = st.session_state.get("reset_flag", False)
+
     for col in claves:
         if col not in df.columns:
             continue
@@ -255,10 +255,14 @@ def generar_filtros_sidebar(df: pd.DataFrame, claves: list[str], clave_prefix: s
         opciones = ["Todos"] + sorted(df[col].dropna().unique())
         key = f"filtro_{clave_prefix}_{col}"
 
-        # Valor actual (si existe)
+        # Si se activó el reset_flag, limpiar el valor guardado
+        if reset_flag:
+            if key in st.session_state:
+                del st.session_state[key]
+            st.session_state["filtros"][clave_prefix][col] = "Todos"
+
         valor_actual = st.session_state["filtros"][clave_prefix].get(col, "Todos")
 
-        # Renderizar selectbox
         valor_sel = st.sidebar.selectbox(
             f"Filtrar por {col}",
             opciones,
@@ -266,16 +270,18 @@ def generar_filtros_sidebar(df: pd.DataFrame, claves: list[str], clave_prefix: s
             key=key,
         )
 
-        # Guardar valor actual
+        # Guardar selección actual
         st.session_state["filtros"][clave_prefix][col] = valor_sel
         filtros[col] = valor_sel
 
-    # Botón local para borrar solo estos filtros (sin recargar)
+    # Botón para borrar filtros (solo actualiza flag)
     if st.sidebar.button("🧹 Borrar filtros", key=f"clear_{clave_prefix}"):
-        for col in claves:
-            key = f"filtro_{clave_prefix}_{col}"
-            st.session_state[key] = "Todos"
-            st.session_state["filtros"][clave_prefix][col] = "Todos"
+        st.session_state["reset_flag"] = True
+        st.experimental_rerun()  # 🔁 forzar re-render limpio
+
+    # Después del rerun, apagar el flag
+    if reset_flag:
+        st.session_state["reset_flag"] = False
 
     return filtros
 
