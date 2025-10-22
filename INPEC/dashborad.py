@@ -233,6 +233,9 @@ if modulo == "VRM":
     st.session_state["df_resumen_vrm"] = resumen
     return df
 
+def detectar_columnas_filtrables(df: pd.DataFrame, max_unicos=20) -> list: 
+    return [col for col in df.columns if df[col].nunique() <= max_unicos and not col.lower().startswith("unnamed")]
+
 # ===================================
 # 🧰 FUNCIONES UTILITARIAS
 # ===================================
