@@ -167,6 +167,7 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
         archivo_metas["META EQUIPO A LA FECHA"] = (
             pd.to_numeric(
                 archivo_metas["META EQUIPO A LA FECHA"]
+                .astype(str) 
                 .str.replace("-", "0")
                 .str.replace(".", ""),
                 errors="coerce"
