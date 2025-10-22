@@ -373,6 +373,13 @@ COLUMNAS_FILTRO = {
 }
 
 cols_filtro = COLUMNAS_FILTRO.get(mod_actual, [])
+
+if st.sidebar.button("🧹 Borrar filtros"):
+    for col in cols_filtro:
+        key = f"filtro_{mod_actual}_{col}"
+        st.session_state[key] = "Todos"
+    st.rerun()
+    
 filtros = generar_filtros_sidebar(df_base, cols_filtro, mod_actual)
 df_filtrado = aplicar_filtros_dinamicos(df_base, filtros)
 
