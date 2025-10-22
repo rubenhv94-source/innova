@@ -233,17 +233,49 @@ def aplicar_filtros_dinamicos(df: pd.DataFrame, filtros: dict) -> pd.DataFrame:
 
 
 def generar_filtros_sidebar(df: pd.DataFrame, claves: list[str], clave_prefix: str) -> dict:
-    """Genera filtros en la barra lateral con manejo correcto del estado."""
-    filtros = {}
+    """
+    Genera filtros en la barra lateral con soporte de reseteo al estado inicial ("Todos").
+    """
     st.sidebar.markdown("### 🔍 Filtros")
+
+    # Crear estructura base
+    if "filtros" not in st.session_state:
+        st.session_state["filtros"] = {}
+    if clave_prefix not in st.session_state["filtros"]:
+        st.session_state["filtros"][clave_prefix] = {}
+
+    # Verificar si se activó el reset
+    reset_flag = st.session_state.get("reset_filtros", False)
+    filtros = {}
 
     for col in claves:
         if col not in df.columns:
             continue
+
         opciones = ["Todos"] + sorted(df[col].dropna().unique())
-        key = f"filtro_{clave_prefix}_{col}"  # clave única
-        valor_sel = st.sidebar.selectbox(f"Filtrar por {col}", opciones, key=key)
+        key = f"filtro_{clave_prefix}_{col}"
+
+        # Si se activó reset, limpiar valores guardados
+        if reset_flag and key in st.session_state:
+            del st.session_state[key]
+            st.session_state["filtros"][clave_prefix][col] = "Todos"
+
+        valor_actual = st.session_state["filtros"][clave_prefix].get(col, "Todos")
+
+        valor_sel = st.sidebar.selectbox(
+            f"Filtrar por {col}",
+            opciones,
+            index=opciones.index(valor_actual) if valor_actual in opciones else 0,
+            key=key
+        )
+
+        # Guardar valor actual
+        st.session_state["filtros"][clave_prefix][col] = valor_sel
         filtros[col] = valor_sel
+
+    # Si se usó el flag, apagarlo después de los selectbox
+    if reset_flag:
+        st.session_state["reset_filtros"] = False
 
     return filtros
 
@@ -353,9 +385,8 @@ if st.sidebar.button("🔄 Refrescar datos"):
     st.rerun()
 
 if st.sidebar.button("🧹 Borrar filtros"):
-    if "filtros" in st.session_state:
-        st.session_state["filtros"].pop(mod_actual, None)
-    st.rerun()
+    st.session_state["reset_filtros"] = True
+    st.experimental_rerun()
 
 df_base = get_datos_por_modulo(mod_actual)
 df_base = limpiar_datos_por_modulo(mod_actual, df_base)
