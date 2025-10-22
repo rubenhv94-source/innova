@@ -176,7 +176,7 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
         metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_referencia]
 
         # Agrupar por usuario
-        metas_usuario = metas_dia.groupby("USUARIO")["META EQUIPO A LA FECHA"].sum().reset_index()
+        metas_usuario = metas_dia.groupby("ROL")["META EQUIPO A LA FECHA"].sum().reset_index()
         metas_usuario.rename(columns={"META EQUIPO A LA FECHA": "Meta Proyectada a la Fecha"}, inplace=True)
 
         # Contar revisiones por usuario desde df VRM
@@ -190,7 +190,7 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
         
         valores_usuario = ["Análisis", "Supervisión", "Auditoría"]
         
-        df["USUARIO"] = np.select(condiciones_estado, valores_usuario, default="sin asignación")
+        df["ROL"] = np.select(condiciones_estado, valores_usuario, default="sin asignación")
         
         condiciones = {
             "Análisis": ["calificada", "aprobada", "auditada"],
@@ -201,10 +201,10 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
         df_revisiones = df.copy()
         resultados = []
 
-        for usuario in df_revisiones["USUARIO"].unique():
-            user_df = df_revisiones[df_revisiones["USUARIO"] == usuario]
+        for usuario in df_revisiones["ROL"].unique():
+            user_df = df_revisiones[df_revisiones["ROL"] == usuario]
             revisadas = user_df["estado_carpeta"].isin(condiciones["Auditoría"]).sum()  # Puedes ajustar a otra vista
-            resultados.append({"USUARIO": usuario, "Carpetas Revisadas": revisadas})
+            resultados.append({"ROL": usuario, "Carpetas Revisadas": revisadas})
 
         df_revisadas = pd.DataFrame(resultados)
 
@@ -400,7 +400,7 @@ if mod_actual == "VRM":
     c3.metric("↔️ Diferencia", f"{diferencia:,}".replace(",", "."))
     c4.metric("〽️ Porcentaje", f"{porcentaje:.1f}%")
 
-    st.subheader("📈 Avance por Usuario")
+    st.subheader("📈 Avance por Rol")
     resumen = st.session_state.get("df_resumen_vrm")
     if resumen is not None:
         st.dataframe(resumen, use_container_width=True, hide_index=True)
