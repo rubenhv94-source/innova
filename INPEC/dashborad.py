@@ -79,8 +79,8 @@ password_gate("🔐 Acceso al tablero")
 # ===================================
 
 st.set_page_config(
-    page_title="Dashboard Modular",
-    page_icon="📊",
+    page_title="Dashboard INPEC",
+    page_icon="🌱",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -195,7 +195,6 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
             "Auditoria": ["auditada"]
         }
         
-
         resultados = []
         for rol, estados in condiciones.items():
             revisadas = df["estado_carpeta"].isin(estados).sum()
@@ -205,58 +204,47 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
     
         resumen = pd.merge(metas_usuario, df_revisadas, on="ROL", how="outer").fillna(0)
     
-        resumen["Meta Proyectada a la Fecha"] = (
-            pd.to_numeric(resumen["Meta Proyectada a la Fecha"], errors="coerce").fillna(0)
-        )
-        resumen["Carpetas Revisadas"] = (
-            pd.to_numeric(resumen["Carpetas Revisadas"], errors="coerce").fillna(0)
-        )
+        resumen["Meta Proyectada a la Fecha"] = (pd.to_numeric(resumen["Meta Proyectada a la Fecha"], errors="coerce").fillna(0))
+        resumen["Carpetas Revisadas"] = (pd.to_numeric(resumen["Carpetas Revisadas"], errors="coerce").fillna(0))
         
-        resumen = (
-            resumen.groupby("ROL", as_index=False)[["Meta Proyectada a la Fecha", "Carpetas Revisadas"]]
-            .sum()
-        )
+        #resumen = (
+        #   resumen.groupby("ROL", as_index=False)[["Meta Proyectada a la Fecha", "Carpetas Revisadas"]]
+        #    .sum()
+        #)
         resumen["% Avance"] = np.where(
             resumen["Meta Proyectada a la Fecha"] == 0,
             0,
-            (resumen["Carpetas Revisadas"] / resumen["Meta Proyectada a la Fecha"] * 100).round(1),
+            (resumen["Carpetas Revisadas"] / resumen["Meta Proyectada a la Fecha"] * 100).round(2),
         )
 
         st.session_state["df_resumen_vrm"] = resumen
 
     return df
 
-def detectar_columnas_filtrables(df: pd.DataFrame, max_unicos=20) -> list:
-    """
-    Devuelve una lista de columnas filtrables, aquellas con un número limitado de valores únicos.
-    """
-    return [
-        col for col in df.columns
-        if df[col].nunique() <= max_unicos and not col.lower().startswith("unnamed")
-    ]
-
 # ===================================
 # 🧰 FUNCIONES UTILITARIAS
 # ===================================
 def aplicar_filtros_dinamicos(df: pd.DataFrame, filtros: dict) -> pd.DataFrame:
+    """Aplica los filtros seleccionados a un DataFrame."""
     for col, val in filtros.items():
-        if val != "Todos":
+        if val != "Todos" and col in df.columns:
             df = df[df[col] == val]
     return df
 
-def generar_filtros_sidebar(df: pd.DataFrame, claves: list[str], clave_prefix: str) -> dict:
-    if "filtros" not in st.session_state:
-        st.session_state["filtros"] = {}
-    if clave_prefix not in st.session_state["filtros"]:
-        st.session_state["filtros"][clave_prefix] = {}
 
+def generar_filtros_sidebar(df: pd.DataFrame, claves: list[str], clave_prefix: str) -> dict:
+    """Genera filtros en la barra lateral con manejo correcto del estado."""
     filtros = {}
+    st.sidebar.markdown("### 🔍 Filtros")
+
     for col in claves:
-        opciones = ["Todos"] + sorted(df[col].unique())
-        default = st.session_state["filtros"][clave_prefix].get(col, "Todos")
-        selected = st.sidebar.selectbox(f"Filtrar por {col}", opciones, index=opciones.index(default) if default in opciones else 0)
-        st.session_state["filtros"][clave_prefix][col] = selected
-        filtros[col] = selected
+        if col not in df.columns:
+            continue
+        opciones = ["Todos"] + sorted(df[col].dropna().unique())
+        key = f"filtro_{clave_prefix}_{col}"  # clave única
+        valor_sel = st.sidebar.selectbox(f"Filtrar por {col}", opciones, key=key)
+        filtros[col] = valor_sel
+
     return filtros
 
 # ===================================
