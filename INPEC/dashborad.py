@@ -213,30 +213,30 @@ if modulo == "VRM":
         revisadas = user_df["estado_carpeta"].isin(estados_validos).sum()
         resultados.append({"ROL": usuario, "Carpetas Revisadas": revisadas})
 
-        df_revisadas = pd.DataFrame(resultados)
-    
-        resumen = pd.merge(metas_usuario, df_revisadas, on="ROL", how="outer").fillna(0)
-    
-        resumen["Meta Proyectada a la Fecha"] = (
-            pd.to_numeric(resumen["Meta Proyectada a la Fecha"], errors="coerce")
-            .fillna(0)
-            .astype(int)
-        )
-        resumen["Carpetas Revisadas"] = (
-            pd.to_numeric(resumen["Carpetas Revisadas"], errors="coerce")
-            .fillna(0)
-            .astype(int)
-        )
-    
-        resumen["% Avance"] = np.where(
-            resumen["Meta Proyectada a la Fecha"] == 0,
-            0,
-            (resumen["Carpetas Revisadas"] / resumen["Meta Proyectada a la Fecha"] * 100).round(1)
-        )
-    
-        st.session_state["df_resumen_vrm"] = resumen
+    df_revisadas = pd.DataFrame(resultados)
 
-    return df
+    resumen = pd.merge(metas_usuario, df_revisadas, on="ROL", how="outer").fillna(0)
+
+    resumen["Meta Proyectada a la Fecha"] = (
+        pd.to_numeric(resumen["Meta Proyectada a la Fecha"], errors="coerce")
+        .fillna(0)
+        .astype(int)
+    )
+    resumen["Carpetas Revisadas"] = (
+        pd.to_numeric(resumen["Carpetas Revisadas"], errors="coerce")
+        .fillna(0)
+        .astype(int)
+    )
+
+    resumen["% Avance"] = np.where(
+        resumen["Meta Proyectada a la Fecha"] == 0,
+        0,
+        (resumen["Carpetas Revisadas"] / resumen["Meta Proyectada a la Fecha"] * 100).round(1)
+    )
+
+    st.session_state["df_resumen_vrm"] = resumen
+
+return df
 
 def detectar_columnas_filtrables(df: pd.DataFrame, max_unicos=20) -> list:
     """
