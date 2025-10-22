@@ -195,7 +195,7 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
         condiciones = {
             "Análisis": ["calificada", "aprobada", "auditada"],
             "Supervisión": ["aprobada", "auditada"],
-            "Auditoría": ["auditada"]
+            "Auditoria": ["auditada"]
         }
         
         df_revisiones = df.copy()
@@ -203,7 +203,7 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
 
         for usuario in df_revisiones["ROL"].unique():
             user_df = df_revisiones[df_revisiones["ROL"] == usuario]
-            revisadas = user_df["estado_carpeta"].isin(condiciones["Auditoría"]).sum()  # Puedes ajustar a otra vista
+            revisadas = user_df["estado_carpeta"].isin(condiciones["Auditoria"]).sum()  # Puedes ajustar a otra vista
             resultados.append({"ROL": usuario, "Carpetas Revisadas": revisadas})
 
         df_revisadas = pd.DataFrame(resultados)
