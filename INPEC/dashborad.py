@@ -352,10 +352,6 @@ if st.sidebar.button("🔄 Refrescar datos"):
     st.cache_data.clear()
     st.rerun()
 
-if st.sidebar.button("🧹 Borrar filtros"):
-    st.session_state["reset_filtros"] = True
-    st.rerun()
-
 df_base = get_datos_por_modulo(mod_actual)
 df_base = limpiar_datos_por_modulo(mod_actual, df_base)
 
