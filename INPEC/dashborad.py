@@ -188,16 +188,21 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
         )
     
         df["estado_carpeta"] = df["estado_carpeta"].str.lower()
-    
-        condiciones_estado = [
-            df["estado_carpeta"].isin(["calificada", "aprobada", "auditada"]),
-            df["estado_carpeta"].isin(["aprobada", "auditada"]),
-            df["estado_carpeta"].isin(["auditada"])
-        ]
-        valores_usuario = ["Análisis", "Supervisión", "Auditoria"]
-    
-        df["ROL"] = np.select(condiciones_estado, valores_usuario, default="sin asignación")
-    
+        
+        df["ROL"] = np.select(
+            [
+                df["estado_carpeta"] == "auditada",
+                df["estado_carpeta"] == "aprobada",
+                df["estado_carpeta"] == "calificada",
+            ],
+            [
+                "Auditoria",
+                "Supervisión",
+                "Análisis",
+            ],
+            default="sin asignación"
+        )
+        
         condiciones = {
             "Análisis": ["calificada", "aprobada", "auditada"],
             "Supervisión": ["aprobada", "auditada"],
