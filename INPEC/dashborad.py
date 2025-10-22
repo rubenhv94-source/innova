@@ -222,8 +222,9 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # ===================================
-# 🧰 FUNCIONES UTILITARIAS
+# 🧰 FUNCIONES DE FILTRO (SIN RECARGA)
 # ===================================
+
 def aplicar_filtros_dinamicos(df: pd.DataFrame, filtros: dict) -> pd.DataFrame:
     """Aplica los filtros seleccionados a un DataFrame."""
     for col, val in filtros.items():
@@ -233,17 +234,48 @@ def aplicar_filtros_dinamicos(df: pd.DataFrame, filtros: dict) -> pd.DataFrame:
 
 
 def generar_filtros_sidebar(df: pd.DataFrame, claves: list[str], clave_prefix: str) -> dict:
-    """Genera filtros en la barra lateral con manejo correcto del estado."""
-    filtros = {}
+    """
+    Genera filtros dinámicos que pueden resetearse sin recargar la página.
+    """
     st.sidebar.markdown("### 🔍 Filtros")
 
+    # Diccionario para guardar las selecciones
+    if "filtros" not in st.session_state:
+        st.session_state["filtros"] = {}
+
+    # Inicializa estructura si no existe
+    if clave_prefix not in st.session_state["filtros"]:
+        st.session_state["filtros"][clave_prefix] = {}
+
+    filtros = {}
     for col in claves:
         if col not in df.columns:
             continue
+
         opciones = ["Todos"] + sorted(df[col].dropna().unique())
-        key = f"filtro_{clave_prefix}_{col}"  # clave única
-        valor_sel = st.sidebar.selectbox(f"Filtrar por {col}", opciones, key=key)
+        key = f"filtro_{clave_prefix}_{col}"
+
+        # Valor actual (si existe)
+        valor_actual = st.session_state["filtros"][clave_prefix].get(col, "Todos")
+
+        # Renderizar selectbox
+        valor_sel = st.sidebar.selectbox(
+            f"Filtrar por {col}",
+            opciones,
+            index=opciones.index(valor_actual) if valor_actual in opciones else 0,
+            key=key,
+        )
+
+        # Guardar valor actual
+        st.session_state["filtros"][clave_prefix][col] = valor_sel
         filtros[col] = valor_sel
+
+    # Botón local para borrar solo estos filtros (sin recargar)
+    if st.sidebar.button("🧹 Borrar filtros", key=f"clear_{clave_prefix}"):
+        for col in claves:
+            key = f"filtro_{clave_prefix}_{col}"
+            st.session_state[key] = "Todos"
+            st.session_state["filtros"][clave_prefix][col] = "Todos"
 
     return filtros
 
