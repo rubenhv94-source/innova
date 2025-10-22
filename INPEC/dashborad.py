@@ -379,13 +379,16 @@ if st.sidebar.button("🧹 Borrar filtros"):
 filtros = generar_filtros_sidebar(df_base, cols_filtro, mod_actual)
 df_filtrado = aplicar_filtros_dinamicos(df_base, filtros)
 
+filtros_metr = {k: v for k, v in filtros.items() if k not in ["estado_carpeta", "estado_rm"]}
+df_metr = aplicar_filtros_dinamicos(df_base, filtros_metr)
+
 st.title(f"{mod_actual}")
 
 if mod_actual == "VRM":
     c1, c2, c3, c4 = st.columns(4)
 
-    total = len(df_filtrado)
-    ejecutadas = len(df_filtrado[df_filtrado["estado_carpeta"] == "auditada"])
+    total = len(df_metr)
+    ejecutadas = len(df_metr[df_metr["estado_carpeta"] == "auditada"])
     diferencia = total - ejecutadas
     porcentaje = (ejecutadas / total * 100) if total else 0
 
