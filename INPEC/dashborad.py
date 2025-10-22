@@ -188,7 +188,7 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
             df["estado_carpeta"].isin(["auditada"])
         ]
         
-        valores_usuario = ["Análisis", "Supervisión", "Auditoría"]
+        valores_usuario = ["Análisis", "Supervisión", "Auditoria"]
         
         df["ROL"] = np.select(condiciones_estado, valores_usuario, default="sin asignación")
         
