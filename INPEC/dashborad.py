@@ -157,86 +157,86 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
             )
         )
 
-if modulo == "VRM":
-
-    tz = timezone("America/Bogota")
-    hoy = datetime.now(tz).date()
-    fecha_referencia = hoy - timedelta(days=1)
-
-    archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"]).dt.date
-    archivo_metas["META EQUIPO A LA FECHA"] = (
-        pd.to_numeric(
-            archivo_metas["META EQUIPO A LA FECHA"]
-            .str.replace("-", "0")
-            .str.replace(".", ""),
-            errors="coerce"
+    if modulo == "VRM":
+    
+        tz = timezone("America/Bogota")
+        hoy = datetime.now(tz).date()
+        fecha_referencia = hoy - timedelta(days=1)
+    
+        archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"]).dt.date
+        archivo_metas["META EQUIPO A LA FECHA"] = (
+            pd.to_numeric(
+                archivo_metas["META EQUIPO A LA FECHA"]
+                .str.replace("-", "0")
+                .str.replace(".", ""),
+                errors="coerce"
+            )
+            .fillna(0)
+            .astype(int)
         )
-        .fillna(0)
-        .astype(int)
-    )
+    
+        metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_referencia]
+    
+        metas_usuario = (
+            metas_dia.groupby("ROL")["META EQUIPO A LA FECHA"]
+            .sum()
+            .reset_index()
+        )
+        metas_usuario.rename(
+            columns={"META EQUIPO A LA FECHA": "Meta Proyectada a la Fecha"},
+            inplace=True
+        )
+    
+        df["estado_carpeta"] = df["estado_carpeta"].str.lower()
+    
+        condiciones_estado = [
+            df["estado_carpeta"].isin(["calificada", "aprobada", "auditada"]),
+            df["estado_carpeta"].isin(["aprobada", "auditada"]),
+            df["estado_carpeta"].isin(["auditada"])
+        ]
+        valores_usuario = ["Análisis", "Supervisión", "Auditoria"]
+    
+        df["ROL"] = np.select(condiciones_estado, valores_usuario, default="sin asignación")
+    
+        condiciones = {
+            "Análisis": ["calificada", "aprobada", "auditada"],
+            "Supervisión": ["aprobada", "auditada"],
+            "Auditoria": ["auditada"]
+        }
+    
+        df_revisiones = df.copy()
+        resultados = []
+    
+        for usuario in df_revisiones["ROL"].unique():
+            user_df = df_revisiones[df_revisiones["ROL"] == usuario]
+            estados_validos = condiciones.get(usuario, [])
+            revisadas = user_df["estado_carpeta"].isin(estados_validos).sum()
+            resultados.append({"ROL": usuario, "Carpetas Revisadas": revisadas})
+    
+        df_revisadas = pd.DataFrame(resultados)
+    
+        resumen = pd.merge(metas_usuario, df_revisadas, on="ROL", how="outer").fillna(0)
+    
+        resumen["Meta Proyectada a la Fecha"] = (
+            pd.to_numeric(resumen["Meta Proyectada a la Fecha"], errors="coerce")
+            .fillna(0)
+            .astype(int)
+        )
+        resumen["Carpetas Revisadas"] = (
+            pd.to_numeric(resumen["Carpetas Revisadas"], errors="coerce")
+            .fillna(0)
+            .astype(int)
+        )
+    
+        resumen["% Avance"] = np.where(
+            resumen["Meta Proyectada a la Fecha"] == 0,
+            0,
+            (resumen["Carpetas Revisadas"] / resumen["Meta Proyectada a la Fecha"] * 100).round(1)
+        )
+    
+        st.session_state["df_resumen_vrm"] = resumen
 
-    metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_referencia]
-
-    metas_usuario = (
-        metas_dia.groupby("ROL")["META EQUIPO A LA FECHA"]
-        .sum()
-        .reset_index()
-    )
-    metas_usuario.rename(
-        columns={"META EQUIPO A LA FECHA": "Meta Proyectada a la Fecha"},
-        inplace=True
-    )
-
-    df["estado_carpeta"] = df["estado_carpeta"].str.lower()
-
-    condiciones_estado = [
-        df["estado_carpeta"].isin(["calificada", "aprobada", "auditada"]),
-        df["estado_carpeta"].isin(["aprobada", "auditada"]),
-        df["estado_carpeta"].isin(["auditada"])
-    ]
-    valores_usuario = ["Análisis", "Supervisión", "Auditoria"]
-
-    df["ROL"] = np.select(condiciones_estado, valores_usuario, default="sin asignación")
-
-    condiciones = {
-        "Análisis": ["calificada", "aprobada", "auditada"],
-        "Supervisión": ["aprobada", "auditada"],
-        "Auditoria": ["auditada"]
-    }
-
-    df_revisiones = df.copy()
-    resultados = []
-
-    for usuario in df_revisiones["ROL"].unique():
-        user_df = df_revisiones[df_revisiones["ROL"] == usuario]
-        estados_validos = condiciones.get(usuario, [])
-        revisadas = user_df["estado_carpeta"].isin(estados_validos).sum()
-        resultados.append({"ROL": usuario, "Carpetas Revisadas": revisadas})
-
-    df_revisadas = pd.DataFrame(resultados)
-
-    resumen = pd.merge(metas_usuario, df_revisadas, on="ROL", how="outer").fillna(0)
-
-    resumen["Meta Proyectada a la Fecha"] = (
-        pd.to_numeric(resumen["Meta Proyectada a la Fecha"], errors="coerce")
-        .fillna(0)
-        .astype(int)
-    )
-    resumen["Carpetas Revisadas"] = (
-        pd.to_numeric(resumen["Carpetas Revisadas"], errors="coerce")
-        .fillna(0)
-        .astype(int)
-    )
-
-    resumen["% Avance"] = np.where(
-        resumen["Meta Proyectada a la Fecha"] == 0,
-        0,
-        (resumen["Carpetas Revisadas"] / resumen["Meta Proyectada a la Fecha"] * 100).round(1)
-    )
-
-    st.session_state["df_resumen_vrm"] = resumen
-
-return df
+    return df
 
 def detectar_columnas_filtrables(df: pd.DataFrame, max_unicos=20) -> list:
     """
