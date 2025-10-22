@@ -398,9 +398,18 @@ if mod_actual == "VRM":
     c4.metric("〽️ Porcentaje", f"{porcentaje:.1f}%")
 
     st.subheader("📈 Avance por Rol")
+    
+    # --- Crear copia del DataFrame sin aplicar filtros de estado_carpeta ni estado_rm
+    filtros_sin_estados = {k: v for k, v in filtros.items() if k not in ["estado_carpeta", "estado_rm"]}
+    df_sin_estados = aplicar_filtros_dinamicos(df_base, filtros_sin_estados)
+    
+    # --- Recalcular el resumen VRM con ese subconjunto sin filtros de estado
+    if mod_actual == "VRM":
+        limpiar_datos_por_modulo(mod_actual, df_sin_estados)
+    
     resumen = st.session_state.get("df_resumen_vrm")
     
-    if resumen is not None:
+    if resumen is not None and not resumen.empty:
         # Identificar columnas numéricas
         cols_numericas = ["Meta Proyectada a la Fecha", "Carpetas Revisadas"]
     
@@ -414,6 +423,8 @@ if mod_actual == "VRM":
             resumen["% Avance"] = resumen["% Avance"].apply(lambda x: f"{x:.1f}%".replace(".", ","))
     
         st.dataframe(resumen, use_container_width=True, hide_index=True)
+    else:
+        st.info("No hay datos disponibles para el avance por rol.")
 
 # Visualizaciones por módulo (fijas)
 vis_default = {
