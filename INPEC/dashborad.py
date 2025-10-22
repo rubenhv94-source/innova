@@ -188,36 +188,19 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
         )
     
         df["estado_carpeta"] = df["estado_carpeta"].str.lower()
-        
-        df["ROL"] = np.select(
-            [
-                df["estado_carpeta"] == "auditada",
-                (df["estado_carpeta"] == "aprobada") | (df["estado_carpeta"] == "auditada"),
-                (df["estado_carpeta"] == "calificada") | (df["estado_carpeta"] == "aprobada") | (df["estado_carpeta"] == "auditada"),
-            ],
-            [
-                "Auditoria",
-                "Supervisión",
-                "Análisis",
-            ],
-            default="sin asignación"
-        )
-        
+
         condiciones = {
             "Análisis": ["calificada", "aprobada", "auditada"],
             "Supervisión": ["aprobada", "auditada"],
             "Auditoria": ["auditada"]
         }
-    
-        df_revisiones = df.copy()
+        
+
         resultados = []
-    
-        for usuario in df_revisiones["ROL"].unique():
-            user_df = df_revisiones[df_revisiones["ROL"] == usuario]
-            estados_validos = condiciones.get(usuario, [])
-            revisadas = user_df["estado_carpeta"].isin(estados_validos).sum()
-            resultados.append({"ROL": usuario, "Carpetas Revisadas": revisadas})
-    
+        for rol, estados in condiciones.items():
+            revisadas = df["estado_carpeta"].isin(estados).sum()
+            resultados.append({"ROL": rol, "Carpetas Revisadas": revisadas})
+        
         df_revisadas = pd.DataFrame(resultados)
     
         resumen = pd.merge(metas_usuario, df_revisadas, on="ROL", how="outer").fillna(0)
