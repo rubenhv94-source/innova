@@ -193,7 +193,7 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
             [
                 df["estado_carpeta"] == "auditada",
                 df["estado_carpeta"] == "aprobada" & df["estado_carpeta"] == "auditada",
-                df["estado_carpeta"] == "calificada" & df["estado_carpeta"] == "aprobada" & df["estado_carpeta"] == "auditada"]),
+                df["estado_carpeta"] == "calificada" & df["estado_carpeta"] == "aprobada" & df["estado_carpeta"] == "auditada",
             ],
             [
                 "Auditoria",
