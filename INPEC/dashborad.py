@@ -223,22 +223,22 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
         resumen = pd.merge(metas_usuario, df_revisadas, on="ROL", how="outer").fillna(0)
     
         resumen["Meta Proyectada a la Fecha"] = (
-            pd.to_numeric(resumen["Meta Proyectada a la Fecha"], errors="coerce")
-            .fillna(0)
-            .astype(int)
+            pd.to_numeric(resumen["Meta Proyectada a la Fecha"], errors="coerce").fillna(0)
         )
         resumen["Carpetas Revisadas"] = (
-            pd.to_numeric(resumen["Carpetas Revisadas"], errors="coerce")
-            .fillna(0)
-            .astype(int)
+            pd.to_numeric(resumen["Carpetas Revisadas"], errors="coerce").fillna(0)
         )
-    
+        
+        resumen = (
+            resumen.groupby("ROL", as_index=False)[["Meta Proyectada a la Fecha", "Carpetas Revisadas"]]
+            .sum()
+        )
         resumen["% Avance"] = np.where(
             resumen["Meta Proyectada a la Fecha"] == 0,
             0,
-            (resumen["Carpetas Revisadas"] / resumen["Meta Proyectada a la Fecha"] * 100).round(1)
+            (resumen["Carpetas Revisadas"] / resumen["Meta Proyectada a la Fecha"] * 100).round(1),
         )
-    
+
         st.session_state["df_resumen_vrm"] = resumen
 
     return df
