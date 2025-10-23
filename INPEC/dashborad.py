@@ -321,6 +321,7 @@ def grafico_anillo(df: pd.DataFrame, columnas: list[str], titulo: str):
         path=columnas,
         values="cantidad",
         title=f"<b>{titulo}</b>",
+        color_discrete_sequence=COLOR_PALETTE
     )
 
     fig.update_traces(textinfo="label+percent entry", insidetextorientation="radial")
