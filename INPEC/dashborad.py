@@ -309,67 +309,22 @@ def grafico_embudo(df: pd.DataFrame, columna: str, titulo: str):
     st.plotly_chart(fig, use_container_width=True)
 
 def grafico_anillo(df: pd.DataFrame, columnas: list[str], titulo: str):
-    if len(columnas) == 1:
-        # Caso 1: Un solo nivel de categoría
-        columna = columnas[0]
-        conteo = df[columna].value_counts().reset_index()
-        conteo.columns = [columna, "cantidad"]
-        conteo["porcentaje"] = (conteo["cantidad"] / conteo["cantidad"].sum() * 100).round(1)
-        conteo["texto"] = conteo[columna] + ": " + conteo["cantidad"].astype(str) + " (" + conteo["porcentaje"].astype(str) + "%)"
-
-        fig = go.Figure(
-            go.Pie(
-                labels=conteo["texto"],
-                values=conteo["cantidad"],
-                hole=0.45,
-                textinfo="label+percent"
-            )
-        )
-
-    elif len(columnas) == 2:
-        # Caso 2: Dos niveles de categorías
-        col_outer, col_inner = columnas
-
-        # Outer ring (nivel 1)
-        outer_counts = df[col_outer].value_counts().reset_index()
-        outer_counts.columns = [col_outer, "cantidad"]
-
-        # Inner ring (nivel 2)
-        inner_counts = df.groupby([col_outer, col_inner]).size().reset_index(name="cantidad")
-
-        fig = go.Figure()
-
-        # Outer ring
-        fig.add_trace(go.Pie(
-            labels=outer_counts[col_outer],
-            values=outer_counts["cantidad"],
-            hole=0.7,
-            direction="clockwise",
-            sort=False,
-            textinfo="label+percent",
-            textposition="inside",
-            showlegend=False,
-            domain={'x': [0, 1], 'y': [0, 1]}
-        ))
-
-        # Inner ring
-        fig.add_trace(go.Pie(
-            labels=inner_counts[col_inner],
-            values=inner_counts["cantidad"],
-            hole=0.4,
-            direction="clockwise",
-            sort=False,
-            textinfo="label+percent",
-            textposition="inside",
-            showlegend=True,
-            domain={'x': [0, 1], 'y': [0, 1]}
-        ))
-
-    else:
-        st.error("Debes proporcionar una o dos columnas como máximo.")
+    if not columnas or len(columnas) == 0:
+        st.warning("Debes especificar al menos una columna.")
         return
 
-    fig.update_layout(title=f"<b>{titulo}</b>")
+    # Preparar datos de agregación
+    conteo = df.groupby(columnas).size().reset_index(name="cantidad")
+
+    fig = px.sunburst(
+        data_frame=conteo,
+        path=columnas,
+        values="cantidad",
+        title=f"<b>{titulo}</b>",
+    )
+
+    fig.update_traces(textinfo="label+percent entry", insidetextorientation="radial")
+    fig.update_layout(margin=dict(t=60, l=0, r=0, b=0))
     st.plotly_chart(fig, use_container_width=True)
 
 # ===================================
@@ -533,10 +488,6 @@ if "Embudo" in vis_seleccionadas and "embudo" in cols_graficos:
 if "Anillo" in vis_seleccionadas and "anillo" in cols_graficos:
     columnas = cols_graficos["anillo"]
     if isinstance(columnas, str):
-        columnas = [columnas]  # Convertir a lista si es solo una columna
-    grafico_anillo(
-        df=df_filtrado,
-        columnas=columnas,
-        titulo=f"Distribución por {' y '.join(columnas)}"
-    )
+        columnas = [columnas]
+    grafico_anillo(df=df_filtrado, columnas=columnas, titulo=f"Distribución por {' y '.join(columnas)}")
 
