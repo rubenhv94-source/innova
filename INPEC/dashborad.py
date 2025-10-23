@@ -527,5 +527,16 @@ if "Embudo" in vis_seleccionadas and "embudo" in cols_graficos:
     grafico_embudo(df_filtrado, columna=cols_graficos["embudo"], titulo=f"Embudo por {cols_graficos['embudo']}")
 
 # === Visualización: ANILLO ===
+#if "Anillo" in vis_seleccionadas and "anillo" in cols_graficos:
+#    grafico_anillo(df_filtrado, columna=cols_graficos["anillo"], titulo=f"Distribución por {cols_graficos['anillo']}")
+
 if "Anillo" in vis_seleccionadas and "anillo" in cols_graficos:
-    grafico_anillo(df_filtrado, columna=cols_graficos["anillo"], titulo=f"Distribución por {cols_graficos['anillo']}")
+    columnas = cols_graficos["anillo"]
+    if isinstance(columnas, str):
+        columnas = [columnas]  # Convertir a lista si es solo una columna
+    grafico_anillo(
+        df=df_filtrado,
+        columnas=columnas,
+        titulo=f"Distribución por {' y '.join(columnas)}"
+    )
+
