@@ -450,7 +450,7 @@ COLUMNAS_TABLA = {
 COLUMNAS_GRAFICOS = {
     "Cronograma": {"barras": ["Estado", "Etapa"]},
     "Entregables": {"barras": ["ESTADO"], "anillo": ["NO. DE PAGO", "ESTADO"]},
-    "VRM": {"embudo": "estado_carpeta", "anillo": ["estado_rm", "nivel_x"]}#,
+    "VRM": {"embudo": "estado_carpeta", "anillo": "estado_rm"}#,
     #"Reclamaciones": {"barras": "estado_carpeta", "anillo": "estado_carpeta", "embudo": "estado_carpeta"}
 }
 cols_graficos = COLUMNAS_GRAFICOS.get(mod_actual, {})
