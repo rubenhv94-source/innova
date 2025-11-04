@@ -86,6 +86,16 @@ def cargar_metas(url: str) -> pd.DataFrame:
 
 # ============ UTILIDADES ============
 
+# Estados estandarizados
+ESTADOS_ORDEN = ["asignada", "devuelta", "calificada", "aprobada", "auditada"]
+ESTADOS_RENOM = {
+    "asignada": "Asignada",
+    "devuelta": "Devuelta",
+    "calificada": "Calificada",
+    "aprobada": "Aprobada",
+    "auditada": "Auditada"
+}
+
 def limpiar_datos_por_modulo(df: pd.DataFrame, archivo_metas: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     archivo_metas = archivo_metas.copy()
