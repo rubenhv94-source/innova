@@ -60,7 +60,7 @@ def cargar_datos(url: str) -> pd.DataFrame:
 
 df = cargar_datos(CSV_URL)
 
-METAS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVxG-bO1D5mkgUFCU35drRV4tyXT9aRaW6q4zzWGa9nFAqkLVdZxaIjwD1cEMJIAXuI4xTBlhHS1og/pub?gid=1199329439&single=true&output=csv"  # <-- Pega aquí la URL real
+METAS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVxG-bO1D5mkgUFCU35drRV4tyXT9aRaW6q4zzWGa9nFAqkLVdZxaIjwD1cEMJIAXuI4xTBlhHS1og/pub?gid=1199329439&single=true&output=csv"
 
 @st.cache_data(ttl=600)
 def cargar_metas(url: str) -> pd.DataFrame:
@@ -73,8 +73,6 @@ def cargar_metas(url: str) -> pd.DataFrame:
             df[col] = (
                 df[col].astype(str)
                 .str.replace("-", "0")
-                .str.replace(".", "", regex=False)
-                .str.replace(",", "", regex=False)
                 .fillna("0")
             )
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0).astype(int)
