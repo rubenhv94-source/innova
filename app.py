@@ -974,7 +974,7 @@ def modulo_vista(nombre_modulo: str):
             fig1 = grafico_estado_con_meta(dfm, nombre_modulo, meta_total)
             st.plotly_chart(fig1, use_container_width=True)
         with col_fig2:
-            fig2 = grafico_categorias_barh(dfm, nombre_modulo, per_subject_meta)
+            fig2 = grafico_categorias_barh(dfm, nombre_modulo, archivo_metas)
             st.plotly_chart(fig2, use_container_width=True)
 
         with st.container():
