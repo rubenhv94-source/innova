@@ -884,7 +884,7 @@ if st.session_state.pagina == "Resumen":
 
     # Fecha de corte = ayer
     tz = timezone("America/Bogota")
-    fecha_corte = datetime.now(tz).date() - timedelta(days=1)
+    fecha_corte = obtener_fecha_corte_valida(archivo_metas)
     st.info(f"Fecha de corte: **{fecha_corte}**")
 
     # Métricas clave
@@ -922,7 +922,7 @@ def modulo_vista(nombre_modulo: str):
     dfm = prepara_df_modulo(df_filtrado, nombre_modulo)
 
     tz = timezone("America/Bogota")
-    fecha_corte = datetime.now(tz).date() - timedelta(days=1)
+    fecha_corte = obtener_fecha_corte_valida(archivo_metas)
     st.info(f"Fecha de corte: **{fecha_corte}**")
 
     # --- Filtrar metas por fecha y clas ---
