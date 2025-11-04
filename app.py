@@ -84,6 +84,8 @@ def cargar_metas(url: str) -> pd.DataFrame:
     
     return df
 
+archivo_metas = cargar_metas(METAS_CSV_URL)
+
 # ============ UTILIDADES ============
 
 # Estados estandarizados
