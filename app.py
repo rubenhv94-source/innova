@@ -494,10 +494,6 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
         (archivo_metas["USUARIO"].str.lower() == clas)
     ].copy()
 
-    # === LIMPIEZA NUMÉRICA ===
-    if "META DIARIA A LA FECHA" in metas_dia.columns:
-        metas_dia["META DIARIA A LA FECHA"] = metas_dia["META DIARIA A LA FECHA"].apply(convertir_numero)
-
     # === Limpieza del DF principal ===
     df_mod = df_mod.dropna(subset=["estado_carpeta", col])
     df_mod["estado_carpeta"] = df_mod["estado_carpeta"].str.strip().str.lower()
