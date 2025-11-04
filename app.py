@@ -48,6 +48,30 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============ DATOS ============
+
+def convertir_numero(s):
+    """Convierte valores como '992,4' → 992.4, '18.855' → 18855, '7' → 7.0"""
+    if pd.isna(s):
+        return 0.0
+    s = str(s).strip()
+
+    # Normalizar ceros o vacíos
+    if s in ["-", "", "nan", "None"]:
+        return 0.0
+
+    # Si contiene coma: es decimal → quitar miles y pasar coma a punto
+    if "," in s:
+        s = s.replace(".", "")    # quitar separador de miles
+        s = s.replace(",", ".")   # coma → punto decimal
+    else:
+        # Sin coma: puede tener puntos como miles → quitar
+        s = s.replace(".", "")
+
+    try:
+        return float(s)
+    except:
+        return 0.0
+
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVxG-bO1D5mkgUFCU35drRV4tyXT9aRaW6q4zzWGa9nFAqkLVdZxaIjwD1cEMJIAXuI4xTBlhHS1og/pub?gid=991630809&single=true&output=csv"
 
 @st.cache_data(ttl=600)
@@ -66,20 +90,17 @@ METAS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVxG-bO1D5mkgU
 def cargar_metas(url: str) -> pd.DataFrame:
     df = pd.read_csv(url, dtype=str)
     df.columns = df.columns.str.strip()
-    
-    # Limpieza de columnas numéricas
-    for col in ["META EQUIPO A LA FECHA", "META DIARIA", "META DIARIA A LA FECHA", "META DIARIA EQUIPO"]:
+
+    # Convertir columnas numéricas correctamente
+    columnas_numericas = ["META EQUIPO A LA FECHA", "META DIARIA", "META DIARIA A LA FECHA", "META DIARIA EQUIPO"]
+
+    for col in columnas_numericas:
         if col in df.columns:
-            df[col] = (
-                df[col].astype(str)
-                .str.replace("-", "0")
-                .fillna("0")
-            )
-            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0).astype(int)
-    
+            df[col] = df[col].astype(str).apply(convertir_numero)
+
     # Fecha como datetime.date
     if "FECHA" in df.columns:
-        df["FECHA"] = pd.to_datetime(df["FECHA"].astype(str).str.strip(), errors="coerce").dt.date
+        df["FECHA"] = pd.to_datetime(df["FECHA"], errors="coerce").dt.date
 
     return df
 
@@ -96,25 +117,6 @@ ESTADOS_RENOM = {
     "aprobada": "Aprobada",
     "auditada": "Auditada"
 }
-
-def convertir_numero(s):
-    if pd.isna(s):
-        return 0.0
-    s = str(s).strip()
-    
-    # Si tiene coma → es decimal → NO borrar puntos
-    if "," in s:
-        s = s.replace(".", "")   # quitar miles
-        s = s.replace(",", ".")  # coma → punto decimal
-    else:
-        # Sin coma → puntos son miles → quitar
-        s = s.replace(".", "")
-    
-    # Si queda vacío o no numérico, devolver 0
-    try:
-        return float(s)
-    except:
-        return 0.0
 
 def obtener_fecha_corte_valida(archivo_metas: pd.DataFrame) -> date | None:
     # Convertir FECHA a datetime.date
