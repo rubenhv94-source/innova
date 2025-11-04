@@ -901,7 +901,7 @@ def modulo_vista(nombre_modulo: str):
 
     meta_total = metas_modulo["META EQUIPO A LA FECHA"].sum()
     n_sujetos = metas_modulo["USUARIO"].nunique()
-    per_subject_meta = (
+    archivo_metas = (
         metas_modulo.groupby("USUARIO")["META EQUIPO A LA FECHA"].sum().mean()
         if not metas_modulo.empty else 0
     )
@@ -990,7 +990,7 @@ def modulo_vista(nombre_modulo: str):
                 with cx3: custom_metric("👨‍💻 Analista2", analista_label_2)
                 with cx4: custom_metric("👩‍💼 Profesional", auditor_label)
 
-        tabla = tabla_resumen(dfm, nombre_modulo, per_subject_meta)
+        tabla = tabla_resumen(dfm, nombre_modulo, archivo_metas)
         st.markdown(f"<h3 style='color:#1F9924; font-weight:600; margin-top: 1em;'>Resumen {nombre_modulo}</h3>", unsafe_allow_html=True)
         st.dataframe(tabla, use_container_width=True)
         return
