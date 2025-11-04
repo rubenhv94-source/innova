@@ -920,36 +920,27 @@ if st.session_state.pagina == "Resumen":
 def modulo_vista(nombre_modulo: str):
     st.markdown(f"<h1 style='color:#1F9924;'>{nombre_modulo}</h1>", unsafe_allow_html=True)
     dfm = prepara_df_modulo(df_filtrado, nombre_modulo)
-
-    tz = timezone("America/Bogota")
+    
     fecha_corte = obtener_fecha_corte_valida(archivo_metas)
     st.info(f"Fecha de corte: **{fecha_corte}**")
-
-    # --- Filtrar metas por fecha y rol ---
-    archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
-    archivo_metas["CLAS"] = archivo_metas["CLAS"].astype(str).str.strip().str.upper()
     
-    # Mapeo correcto de rol a CLAS del archivo
-    rol_map = {
+    archivo_metas = archivo_metas.copy()
+    archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
+    archivo_metas["CLAS"] = archivo_metas["CLAS"].astype(str).str.strip().str.title()
+    
+    mapa_clas = {
         "Analistas": "Análisis",
         "Supervisores": "Supervisión",
-        "Equipos": "Auditoria"   # En tu archivo puede ser "AUDITOR" o "AUDITORIA"
+        "Equipos": "Auditoria"
     }
-    rol_clas = rol_map.get(nombre_modulo, "").upper()
+    rol_clas = mapa_clas.get(nombre_modulo, "")
     
-    fecha_corte = obtener_fecha_corte_valida(archivo_metas)
     metas_corte = archivo_metas[archivo_metas["FECHA"] == fecha_corte]
-    
     metas_modulo = metas_corte[metas_corte["CLAS"] == rol_clas]
     
     meta_total = metas_modulo["META EQUIPO A LA FECHA"].sum() if "META EQUIPO A LA FECHA" in metas_modulo.columns else 0
-    n_sujetos = metas_modulo["USUARIO"].nunique()
-    per_subject_meta = (
-        metas_modulo.groupby("USUARIO")["META EQUIPO A LA FECHA"].sum().mean()
-        if not metas_modulo.empty else 0
-    )
     
-    # Carpeta desarrolladas válidas
+    # === Calcular desarrolladas válidas ===
     validos = estados_validos(nombre_modulo)
     desarrolladas_total = dfm["estado_carpeta"].str.lower().isin(validos).sum() if "estado_carpeta" in dfm.columns else 0
     diferencia_total = desarrolladas_total - meta_total
