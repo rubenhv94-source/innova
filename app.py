@@ -537,9 +537,8 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
                 else:
                     # Meta proporcional por auditor
                     relacion["Meta"] = (relacion["n_supervisores"] / total_supervisores * total_meta).round().astype(int)
-                    pivot = pivot.merge(relacion[["auditor", "Meta"]], left_on=col, right_on="auditor", how="left")
+                    pivot = pivot.merge(relacion[[col, "Meta"]], on=col, how="left")
                     pivot["Meta"] = pivot["Meta"].fillna(0).astype(int)
-                    pivot.drop(columns=["auditor"], inplace=True)
         else:
             # Para otros módulos, meta total se asigna igual
             pivot["Meta"] = int(total_meta)
