@@ -455,6 +455,7 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd
 def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame) -> pd.DataFrame:
     col = sujetos_col(modulo)
 
+    # Validación inicial
     if df_mod.empty or col not in df_mod.columns:
         st.warning(f"No se encontró la columna esperada '{col}' para el módulo '{modulo}'.")
         return pd.DataFrame(columns=["Categoria", col.capitalize(), "Analizadas", "Meta", "Faltantes"])
@@ -462,36 +463,37 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
     # Estados válidos
     estados_efectivos = set(estados_validos(modulo))
 
-    # Fecha válida
+    # Fecha de corte válida
     fecha_ref = obtener_fecha_corte_valida(archivo_metas)
 
-    # Normalizar archivo metas
+    # Preprocesar archivo de metas
     archivo_metas = archivo_metas.copy()
     archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
     archivo_metas["USUARIO"] = archivo_metas["USUARIO"].astype(str).str.strip().str.lower()
 
-    # Determinar el rol como se guarda en USUARIO
     rol_map = {"Analistas": "análisis", "Supervisores": "supervisión", "Equipos": "auditoria"}
-    rol_usuario = rol_map.get(modulo, "").strip().lower()
+    clas = rol_map.get(modulo, "").strip().lower()
 
-    # Filtrar correctamente por USUARIO y FECHA
     metas_dia = archivo_metas[
-        (archivo_metas["FECHA"] == fecha_ref) & 
-        (archivo_metas["USUARIO"] == rol_usuario)
-    ]
+        (archivo_metas["FECHA"] == fecha_ref) &
+        (archivo_metas["USUARIO"].str.lower() == clas)
+    ].copy()
 
-    # --- DEBUG temporal ---
-    st.write("Rol buscado:", rol_usuario)
-    st.write("Fecha buscada:", fecha_ref)
-    st.write("Fechas disponibles:", archivo_metas["FECHA"].unique())
-    st.write("Usuarios disponibles:", archivo_metas["USUARIO"].unique())
+    # === LIMPIEZA NUMÉRICA ===
+    if "META DIARIA A LA FECHA" in metas_dia.columns:
+        metas_dia["META DIARIA A LA FECHA"] = (
+            metas_dia["META DIARIA A LA FECHA"]
+            .astype(str)
+            .str.replace(".", "", regex=False)
+            .str.replace(",", ".", regex=False)
+            .astype(float)
+        )
 
-    meta_total = metas_dia["META DIARIA A LA FECHA"].sum() if not metas_dia.empty else 0
-
-    # --- Limpiar DF principal ---
+    # === Limpieza del DF principal ===
     df_mod = df_mod.dropna(subset=["estado_carpeta", col])
     df_mod["estado_carpeta"] = df_mod["estado_carpeta"].str.strip().str.lower()
 
+    # Agrupación de estados
     pivot = (
         df_mod
         .groupby([col, "estado_carpeta"])
@@ -506,19 +508,28 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
 
     pivot["Analizadas"] = pivot[[e for e in ESTADOS_ORDEN if e in estados_efectivos]].sum(axis=1)
 
-    # Distribuir meta total entre sujetos presentes
-    sujetos_presentes = pivot[col].nunique()
-    meta_individual = round(meta_total / sujetos_presentes) if sujetos_presentes > 0 else 0
-    pivot["Meta"] = meta_individual
+    # ============================
+    # META desde archivo de metas (agregada por módulo)
+    # ============================
+    if metas_dia.empty or "META DIARIA A LA FECHA" not in metas_dia.columns:
+        st.warning(f"No hay metas disponibles para '{clas}' en la fecha {fecha_ref}.")
+        pivot["Meta"] = 0
+    else:
+        total_meta = metas_dia["META DIARIA A LA FECHA"].sum()
+        pivot["Meta"] = total_meta  # Asigna la misma meta a todos los sujetos
+        pivot["Meta"] = pivot["Meta"].astype(int)
 
+    # Faltantes y clasificación
     pivot["Faltantes"] = pivot["Meta"] - pivot["Analizadas"]
     pivot["Categoria"] = pivot["Faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
 
+    # Orden final
     columnas_estado = ESTADOS_ORDEN
     out = pivot[[col] + columnas_estado + ["Analizadas", "Meta", "Faltantes", "Categoria"]]
 
     categorias = ["Al día", "Atraso normal", "Atraso medio", "Atraso alto"]
     out["Categoria"] = pd.Categorical(out["Categoria"], categories=categorias, ordered=True)
+
     out = out.sort_values(["Categoria", col], ascending=[True, True])
     out = out.rename(columns={col: col.capitalize(), **{e: ESTADOS_RENOM.get(e, e) for e in columnas_estado}})
 
