@@ -475,22 +475,26 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
         st.warning(f"No se encontró la columna esperada '{col}' para el módulo '{modulo}'.")
         return pd.DataFrame(columns=["Categoria", col.capitalize(), "Analizadas", "Meta", "Faltantes"])
 
+    # Estados válidos
     estados_efectivos = set(estados_validos(modulo))
+
+    # Fecha de corte válida
     fecha_ref = obtener_fecha_corte_valida(archivo_metas)
 
-    # Preprocesar metas
+    # Preprocesar archivo de metas
     archivo_metas = archivo_metas.copy()
     archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
     archivo_metas["USUARIO"] = archivo_metas["USUARIO"].astype(str).str.strip().str.lower()
 
-    # Rol base para comparación
     rol_map = {"Analistas": "análisis", "Supervisores": "supervisión", "Equipos": "auditoria"}
     clas = rol_map.get(modulo, "").strip().lower()
 
-    # Filtrar metas por fecha
-    metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_ref].copy()
+    metas_dia = archivo_metas[
+        (archivo_metas["FECHA"] == fecha_ref) &
+        (archivo_metas["USUARIO"].str.lower() == clas)
+    ].copy()
 
-    # --- Limpieza del DF principal ---
+    # === Limpieza del DF principal ===
     df_mod = df_mod.dropna(subset=["estado_carpeta", col])
     df_mod["estado_carpeta"] = df_mod["estado_carpeta"].str.strip().str.lower()
 
@@ -510,46 +514,27 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
     pivot["Analizadas"] = pivot[[e for e in ESTADOS_ORDEN if e in estados_efectivos]].sum(axis=1)
 
     # ============================
-    # META por sujeto o agregada por rol
+    # META desde archivo de metas (agregada por módulo)
     # ============================
     if metas_dia.empty or "META DIARIA A LA FECHA" not in metas_dia.columns:
-        st.warning(f"No hay metas disponibles para la fecha {fecha_ref}.")
+        st.warning(f"No hay metas disponibles para '{clas}' en la fecha {fecha_ref}.")
         pivot["Meta"] = 0
     else:
-        if modulo != "Equipos":
-            # Meta total por rol
-            total_meta = metas_dia[metas_dia["USUARIO"] == clas]["META DIARIA A LA FECHA"].sum()
-            pivot["Meta"] = total_meta
-        else:
-            # === CASO ESPECIAL: Equipos ===
-            # Obtener supervisores únicos por auditor
-            df_sup = df_mod[["auditor", "supervisor"]].dropna().drop_duplicates()
+        total_meta = metas_dia["META DIARIA A LA FECHA"].sum()
+        pivot["Meta"] = total_meta  # Asigna la misma meta a todos los sujetos
+        pivot["Meta"] = pivot["Meta"].astype(int)
 
-            # Filtrar metas solo de supervisores
-            metas_sup = metas_dia[metas_dia["USUARIO"] == "supervisión"]
-            metas_sup = metas_sup.copy()
-
-            # Agrupar metas por supervisor (en columna CLAS)
-            metas_sup["CLAS"] = metas_sup["CLAS"].astype(str).str.strip()
-            metas_por_sup = metas_sup.groupby("CLAS")["META DIARIA A LA FECHA"].sum().reset_index()
-            metas_por_sup.columns = ["supervisor", "Meta"]
-
-            # Sumar metas de supervisores por auditor
-            metas_auditor = df_sup.merge(metas_por_sup, on="supervisor", how="left")
-            metas_auditor = metas_auditor.groupby("auditor")["Meta"].sum().reset_index()
-            metas_auditor.columns = [col, "Meta"]
-
-            pivot = pivot.merge(metas_auditor, on=col, how="left")
-            pivot["Meta"] = pivot["Meta"].fillna(0)
-
+    # Faltantes y clasificación
     pivot["Faltantes"] = pivot["Meta"] - pivot["Analizadas"]
     pivot["Categoria"] = pivot["Faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
 
+    # Orden final
     columnas_estado = ESTADOS_ORDEN
     out = pivot[[col] + columnas_estado + ["Analizadas", "Meta", "Faltantes", "Categoria"]]
 
     categorias = ["Al día", "Atraso normal", "Atraso medio", "Atraso alto"]
     out["Categoria"] = pd.Categorical(out["Categoria"], categories=categorias, ordered=True)
+
     out = out.sort_values(["Categoria", col], ascending=[True, True])
     out = out.rename(columns={col: col.capitalize(), **{e: ESTADOS_RENOM.get(e, e) for e in columnas_estado}})
 
