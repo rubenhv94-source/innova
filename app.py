@@ -1159,12 +1159,10 @@ def modulo_vista(nombre_modulo: str):
     st.markdown(f"<h3 style='color:#1F9924; font-weight:600; margin-top: 1em;'>Resumen {nombre_modulo}</h3>", unsafe_allow_html=True)
     st.dataframe(tabla, use_container_width=True)
 
-# ============ ENRUTAMIENTO ============
-modulos_disponibles = {
-    "Analistas": lambda: modulo_vista("Analistas"),
-    "Supervisores": lambda: modulo_vista("Supervisores"),
-    "Equipos": lambda: modulo_vista("Equipos")
-}
-
-if st.session_state.pagina in modulos_disponibles:
-    modulos_disponibles[st.session_state.pagina]()
+# ============ ENRUTAMIENTO ============ 
+if st.session_state.pagina == "Analistas": 
+    modulo_vista("Analistas") 
+elif st.session_state.pagina == "Supervisores": 
+    modulo_vista("Supervisores") 
+elif st.session_state.pagina == "Equipos": 
+    modulo_vista("Equipos")
