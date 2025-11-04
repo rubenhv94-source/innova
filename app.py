@@ -81,8 +81,8 @@ def cargar_metas(url: str) -> pd.DataFrame:
     
     # Fecha como datetime.date
     if "FECHA" in df.columns:
-        df["FECHA"] = pd.to_datetime(df["FECHA"], errors="coerce").dt.date
-    
+        df["FECHA"] = pd.to_datetime(df["FECHA"].astype(str).str.strip(), errors="coerce").dt.date
+
     return df
 
 archivo_metas = cargar_metas(METAS_CSV_URL)
