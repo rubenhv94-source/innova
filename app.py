@@ -99,6 +99,25 @@ ESTADOS_RENOM = {
     "auditada": "Auditada"
 }
 
+def convertir_numero(s):
+    if pd.isna(s):
+        return 0.0
+    s = str(s).strip()
+    
+    # Si tiene coma → es decimal → NO borrar puntos
+    if "," in s:
+        s = s.replace(".", "")   # quitar miles
+        s = s.replace(",", ".")  # coma → punto decimal
+    else:
+        # Sin coma → puntos son miles → quitar
+        s = s.replace(".", "")
+    
+    # Si queda vacío o no numérico, devolver 0
+    try:
+        return float(s)
+    except:
+        return 0.0
+
 def obtener_fecha_corte_valida(archivo_metas: pd.DataFrame) -> date | None:
     # Convertir FECHA a datetime.date
     archivo_metas = archivo_metas.copy()
@@ -481,13 +500,7 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
 
     # === LIMPIEZA NUMÉRICA ===
     if "META DIARIA A LA FECHA" in metas_dia.columns:
-        metas_dia["META DIARIA A LA FECHA"] = (
-            metas_dia["META DIARIA A LA FECHA"]
-            .astype(str)
-            .apply(lambda x: x.replace(".", "") if "," not in x else x)
-            .replace(",", ".", regex=False)
-            .astype(float)
-        )
+        metas_dia["META DIARIA A LA FECHA"] = metas_dia["META DIARIA A LA FECHA"].apply(convertir_numero)
 
     # === Limpieza del DF principal ===
     df_mod = df_mod.dropna(subset=["estado_carpeta", col])
