@@ -99,21 +99,20 @@ ESTADOS_RENOM = {
     "auditada": "Auditada"
 }
 
-def obtener_fecha_corte_valida(archivo_metas: pd.DataFrame) -> date:
-    """Devuelve la fecha de corte válida (la más reciente <= hoy) del archivo de metas"""
-    if "FECHA" not in archivo_metas.columns:
-        return date.today() - timedelta(days=1)
-
+def obtener_fecha_corte_valida(archivo_metas: pd.DataFrame) -> date | None:
+    # Convertir FECHA a datetime.date
+    archivo_metas = archivo_metas.copy()
     archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
-    fechas_validas = archivo_metas["FECHA"].dropna()
-    
-    if fechas_validas.empty:
-        return date.today() - timedelta(days=1)
 
-    fecha_max = fechas_validas.max()
-    fecha_ayer = date.today() - timedelta(days=1)
-    
-    return fecha_max if fecha_max < date.today() else fecha_ayer
+    hoy = datetime.now(timezone("America/Bogota")).date()
+
+    # Filtrar solo fechas <= hoy
+    fechas_validas = archivo_metas[archivo_metas["FECHA"] <= hoy]["FECHA"]
+
+    if fechas_validas.empty:
+        return None  # No hay datos válidos
+
+    return fechas_validas.max()  # La última disponible
 
 def limpiar_datos_por_modulo(df: pd.DataFrame, archivo_metas: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
