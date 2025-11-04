@@ -1004,7 +1004,7 @@ if st.session_state.pagina == "Resumen":
     st.plotly_chart(fig_estado, use_container_width=True)
 
 # ============ VISTA MÓDULOS ============
-def modulo_vista(nombre_modulo: str):
+def modulo_vista(nombre_modulo: str, archivo_metas: pd.DataFrame):
     st.markdown(f"<h1 style='color:#1F9924;'>{nombre_modulo}</h1>", unsafe_allow_html=True)
     dfm = prepara_df_modulo(df_filtrado, nombre_modulo)
 
@@ -1256,8 +1256,8 @@ def modulo_vista(nombre_modulo: str):
 
 # ============ ENRUTAMIENTO ============ 
 if st.session_state.pagina == "Analistas": 
-    modulo_vista("Analistas") 
+    modulo_vista("Analistas", archivo_metas)
 elif st.session_state.pagina == "Supervisores": 
-    modulo_vista("Supervisores") 
+    modulo_vista("Supervisores", archivo_metas)
 elif st.session_state.pagina == "Equipos": 
-    modulo_vista("Equipos")
+    modulo_vista("Equipos", archivo_metas)
