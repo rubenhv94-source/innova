@@ -50,21 +50,17 @@ st.markdown("""
 # ============ DATOS ============
 
 def convertir_numero(s):
-    """Convierte valores como '992,4' → 992.4, '18.855' → 18855, '7' → 7.0"""
+
     if pd.isna(s):
         return 0.0
     s = str(s).strip()
 
-    # Normalizar ceros o vacíos
     if s in ["-", "", "nan", "None"]:
         return 0.0
 
-    # Si contiene coma: es decimal → quitar miles y pasar coma a punto
     if "," in s:
         s = s.replace(".", "")    # quitar separador de miles
-        s = s.replace(",", ".")   # coma → punto decimal
     else:
-        # Sin coma: puede tener puntos como miles → quitar
         s = s.replace(".", "")
 
     try:
