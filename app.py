@@ -226,10 +226,15 @@ def desarrolladas_por_sujeto(df_mod: pd.DataFrame, modulo: str) -> pd.DataFrame:
 # ============ GRAFICOS ============
 
 def grafico_avance_total(total: int, avance: int, meta: int):
-    porcentaje = (avance / meta) * 100 if meta > 0 else 0
+    if meta <= 0:
+        porcentaje = 0
+    else:
+        porcentaje = min((avance / meta) * 100, 150)  # Limita al 150% por estética
+
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=porcentaje,
+        number={"suffix": "%"},
         title={"text": "<b>Avance total</b>"},
         gauge={
             "axis": {"range": [0, 100]},
@@ -237,15 +242,27 @@ def grafico_avance_total(total: int, avance: int, meta: int):
             "steps": [
                 {"range": [0, 50], "color": "#e8f5e9"},
                 {"range": [50, 100], "color": "#c8e6c9"}
-            ]
+            ],
+            "threshold": {
+                "line": {"color": "red", "width": 3},
+                "thickness": 0.75,
+                "value": 100
+            }
         }
     ))
-    fig.update_layout(height=300, margin=dict(t=40, b=20, l=20, r=20))
+
+    fig.update_layout(
+        height=300,
+        margin=dict(t=40, b=20, l=20, r=20)
+    )
+
     return fig
 
 def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, meta_total: int = 0):
-    total_meta = meta_total
+    if "estado_carpeta" not in df_mod.columns:
+        return px.bar(title="<b>Sin datos para mostrar</b>")
 
+    # Recuento por estado estandarizado
     conteo = (
         df_mod["estado_carpeta"]
         .fillna("")
@@ -253,7 +270,7 @@ def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, meta_total: int =
         .map(ESTADOS_RENOM)
         .value_counts()
         .reindex(
-            [ESTADOS_RENOM.get(e, e) for e in ["asignada", "devuelta", "calificada", "aprobada", "auditada"] + ["Por asignar"]],
+            [ESTADOS_RENOM.get(e, e) for e in ["asignada", "devuelta", "calificada", "aprobada", "auditada", "Por asignar"]],
             fill_value=0
         )
         .reset_index()
@@ -261,12 +278,15 @@ def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, meta_total: int =
 
     conteo.columns = ["estado_carpeta", "cantidad"]
     total = conteo["cantidad"].sum()
+
     if total == 0:
         return px.bar(title="<b>Sin datos para mostrar</b>")
 
+    # Porcentajes y etiquetas
     conteo["porcentaje"] = (conteo["cantidad"] / total * 100).round(1)
     conteo["label"] = conteo["cantidad"].astype(str) + " (" + conteo["porcentaje"].astype(str) + "%)"
 
+    # Gráfico base
     fig = px.bar(
         conteo,
         x="estado_carpeta",
@@ -277,17 +297,18 @@ def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, meta_total: int =
         title=f"<b>Distribución por estado — {modulo}</b>",
     )
 
-    if total_meta > 0:
+    # Meta como línea horizontal
+    if meta_total > 0:
         fig.add_scatter(
             x=conteo["estado_carpeta"],
-            y=[total_meta] * len(conteo),
+            y=[meta_total] * len(conteo),
             mode="lines",
             name="Meta acumulada",
             line=dict(color="#007BFF", width=2, dash="dash"),
         )
 
         fig.add_annotation(
-            text=f"<b>Meta: {total_meta:,.0f}</b>".replace(",", "X").replace(".", ",").replace("X", "."),
+            text=f"<b>Meta: {meta_total:,.0f}</b>".replace(",", "X").replace(".", ",").replace("X", "."),
             xref="paper", yref="paper",
             x=0.98, y=1.05,
             showarrow=False,
@@ -295,6 +316,7 @@ def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, meta_total: int =
             align="right",
         )
 
+    # Layout final
     fig.update_layout(
         showlegend=False,
         xaxis_title="",
@@ -304,33 +326,52 @@ def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, meta_total: int =
         margin=dict(l=20, r=20, t=80, b=40),
         title_font=dict(size=18, color="#1F9924", family="Arial"),
     )
+
     return fig
 
 def grafico_avance_por_rol(df_resumen: pd.DataFrame, rol: str):
+    # Validar existencia de ROL
+    if df_resumen.empty or "ROL" not in df_resumen.columns:
+        return go.Figure()
+
     row = df_resumen[df_resumen["ROL"] == rol]
     if row.empty:
         return go.Figure()
 
-    meta = int(row["Meta Proyectada a la Fecha"].values[0])
-    revisadas = int(row["Carpetas Revisadas"].values[0])
-    porcentaje = float(row["% Avance"].values[0])
+    # Extraer valores con tolerancia a errores
+    meta = pd.to_numeric(row["Meta Proyectada a la Fecha"].values[0], errors="coerce") or 0
+    revisadas = pd.to_numeric(row["Carpetas Revisadas"].values[0], errors="coerce") or 0
+    porcentaje = pd.to_numeric(row["% Avance"].values[0], errors="coerce") or 0.0
+
+    # Asegurar que porcentaje esté en rango válido
+    porcentaje = min(max(porcentaje, 0), 150)
 
     fig = go.Figure(go.Indicator(
         mode="gauge+number+delta",
         value=porcentaje,
-        delta={"reference": 100, "increasing": {"color": "red"}, "decreasing": {"color": "green"}},
-        title={"text": f"<b>Avance — {rol}</b>"},
+        delta={
+            "reference": 100,
+            "increasing": {"color": "red"},
+            "decreasing": {"color": "green"},
+        },
+        title={"text": f"<b>Avance — {rol}</b><br><span style='font-size:12px'>({revisadas:,} de {meta:,})</span>"},
         gauge={
             "axis": {"range": [0, 100]},
             "bar": {"color": "#1F9924"},
             "steps": [
                 {"range": [0, 50], "color": "#e8f5e9"},
-                {"range": [50, 100], "color": "#c8e6c9"}
+                {"range": [50, 100], "color": "#c8e6c9"},
             ],
         },
         domain={'x': [0, 1], 'y': [0, 1]}
     ))
-    fig.update_layout(height=320, margin=dict(t=50, b=30, l=30, r=30))
+
+    fig.update_layout(
+        height=320,
+        margin=dict(t=50, b=30, l=30, r=30),
+        font=dict(family="Arial", size=12),
+    )
+
     return fig
 
 def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame):
@@ -338,12 +379,10 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd
     if df_mod.empty or col not in df_mod.columns:
         return px.bar(title="<b>Sin datos para mostrar</b>")
 
-    # Fecha de referencia
-    tz = timezone("America/Bogota")
-    hoy = datetime.now(tz).date()
+    # === Fecha de corte válida ===
     fecha_ref = obtener_fecha_corte_valida(archivo_metas)
 
-    # Revisadas por persona
+    # === Revisadas por persona ===
     estados = estados_validos(modulo)
     df_ok = df_mod[df_mod["estado_carpeta"].str.lower().isin(estados)]
     desarrolladas = (
@@ -352,29 +391,44 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd
         .reset_index(name="revisadas")
     )
 
-    # Metas por persona
+    # === Metas por persona ===
+    archivo_metas = archivo_metas.copy()
     archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
-    metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_ref]
 
-    if "USUARIO" not in metas_dia.columns:
-        return px.bar(title="<b>Metas no disponibles</b>")
+    # Determinar CLAS correcta según módulo
+    rol_map = {"Analistas": "Análisis", "Supervisores": "Supervisión", "Equipos": "Auditoria"}
+    clas = rol_map.get(modulo, "").strip()
+    
+    metas_dia = archivo_metas[(archivo_metas["FECHA"] == fecha_ref) & (archivo_metas["USUARIO"].str.strip() == clas)]
+
+    if metas_dia.empty or "META DIARIA A LA FECHA" not in metas_dia.columns:
+        return px.bar(title=f"<b>Sin metas para {clas}</b>")
 
     metas_sujeto = (
-        metas_dia.groupby("USUARIO")["META DIARIA A LA FECHA"]
+        metas_dia
+        .groupby("USUARIO")["META DIARIA A LA FECHA"]
         .sum()
         .reset_index()
-        .rename(columns={"USUARIO": col, "META DIARIA A LA FECHA": "meta"})
+        .rename(columns={
+            "USUARIO": col,
+            "META DIARIA A LA FECHA": "meta"
+        })
     )
+    metas_sujeto["meta"] = pd.to_numeric(metas_sujeto["meta"], errors="coerce").fillna(0).astype(int)
 
+    # === Unión metas + desarrolladas ===
     df = pd.merge(desarrolladas, metas_sujeto, on=col, how="left").fillna(0)
+    df["revisadas"] = pd.to_numeric(df["revisadas"], errors="coerce").fillna(0).astype(int)
     df["atraso"] = df["meta"] - df["revisadas"]
     df["categoria"] = df["atraso"].apply(lambda x: clasifica_categoria(int(x), modulo))
 
+    # === Conteo por categoría ===
     cat_count = df.groupby("categoria").size().reset_index(name="cantidad")
     orden = ["Al día", "Atraso normal", "Atraso medio", "Atraso alto"]
     cat_count["categoria"] = pd.Categorical(cat_count["categoria"], categories=orden, ordered=True)
     cat_count = cat_count.sort_values("categoria")
 
+    # === Gráfico ===
     fig = px.bar(
         cat_count,
         x="cantidad",
@@ -382,7 +436,7 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd
         orientation="h",
         color="categoria",
         color_discrete_sequence=COLOR_PALETTE,
-        title="<b>Cantidad por seguimiento individual</b>",
+        title=f"<b>Cantidad por seguimiento individual — {modulo}</b>",
         text_auto=True,
     )
 
@@ -395,29 +449,38 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd
         plot_bgcolor="white",
         margin=dict(l=20, r=20, t=60, b=40),
     )
+
     return fig
 
 def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame) -> pd.DataFrame:
     col = sujetos_col(modulo)
 
-    # Validar columna base
+    # Validación inicial
     if df_mod.empty or col not in df_mod.columns:
         st.warning(f"No se encontró la columna esperada '{col}' para el módulo '{modulo}'.")
         return pd.DataFrame(columns=["Categoria", col.capitalize(), "Analizadas", "Meta", "Faltantes"])
 
-    # Estados válidos según módulo
+    # Estados válidos
     estados_efectivos = set(estados_validos(modulo))
 
-    # Fecha de referencia
-    tz = timezone("America/Bogota")
-    hoy = datetime.now(tz).date()
+    # Fecha de corte válida
     fecha_ref = obtener_fecha_corte_valida(archivo_metas)
 
-    # Limpiar y filtrar datos
+    # Preprocesar archivo de metas
+    archivo_metas = archivo_metas.copy()
+    archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
+    archivo_metas["USUARIO"] = archivo_metas["USUARIO"].astype(str).str.strip()
+
+    rol_map = {"Analistas": "Análisis", "Supervisores": "Supervisión", "Equipos": "Auditoria"}
+    clas = rol_map.get(modulo, "").strip()
+
+    metas_dia = archivo_metas[(archivo_metas["FECHA"] == fecha_ref) & (archivo_metas["USUARIO"] == clas)]
+
+    # Limpieza del DF principal
     df_mod = df_mod.dropna(subset=["estado_carpeta", col])
     df_mod["estado_carpeta"] = df_mod["estado_carpeta"].str.strip().str.lower()
 
-    # Agrupación por sujeto y estado
+    # Agrupación
     pivot = (
         df_mod
         .groupby([col, "estado_carpeta"])
@@ -426,48 +489,39 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
         .reset_index()
     )
 
-    # Asegurar columnas esperadas
     for estado in ESTADOS_ORDEN:
         if estado not in pivot.columns:
             pivot[estado] = 0
 
-    # Calcular total de analizadas (solo estados válidos)
     pivot["Analizadas"] = pivot[[e for e in ESTADOS_ORDEN if e in estados_efectivos]].sum(axis=1)
 
     # ============================
-    #  Cargar metas por sujeto
+    # Cargar metas por sujeto
     # ============================
-    if "FECHA" not in archivo_metas.columns or "USUARIO" not in archivo_metas.columns:
-        st.warning("Archivo de metas no tiene columnas 'FECHA' o 'USUARIO'.")
+    if metas_dia.empty or "META DIARIA A LA FECHA" not in metas_dia.columns:
+        st.warning(f"No hay metas disponibles para {clas} en la fecha {fecha_ref}.")
         pivot["Meta"] = 0
     else:
-        archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
-        metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_ref]
+        metas_sujeto = (
+            metas_dia
+            .groupby("USUARIO")["META DIARIA A LA FECHA"]
+            .sum()
+            .reset_index()
+            .rename(columns={"USUARIO": col, "META DIARIA A LA FECHA": "Meta"})
+        )
 
-        if metas_dia.empty:
-            st.warning("No hay metas disponibles para la fecha de corte.")
-            pivot["Meta"] = 0
+        # Unir metas con pivot
+        if col in metas_sujeto.columns:
+            pivot = pivot.merge(metas_sujeto, on=col, how="left")
+            pivot["Meta"] = pivot["Meta"].fillna(0).astype(int)
         else:
-            metas_sujeto = (
-                metas_dia.groupby("USUARIO")["META DIARIA A LA FECHA"]
-                .sum()
-                .reset_index()
-                .rename(columns={"USUARIO": col, "META DIARIA A LA FECHA": "Meta"})
-            )
+            pivot["Meta"] = 0
 
-            # Validar que el merge sea posible
-            if col not in metas_sujeto.columns or col not in pivot.columns:
-                st.warning(f"No se puede unir metas: columna '{col}' no encontrada en datos.")
-                pivot["Meta"] = 0
-            else:
-                pivot = pivot.merge(metas_sujeto, on=col, how="left")
-                pivot["Meta"] = pivot["Meta"].fillna(0).astype(int)
-
-    # Calcular faltantes y clasificar
+    # Faltantes y clasificación
     pivot["Faltantes"] = pivot["Meta"] - pivot["Analizadas"]
     pivot["Categoria"] = pivot["Faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
 
-    # Ordenar y estructurar salida
+    # Orden final
     columnas_estado = ESTADOS_ORDEN
     out = pivot[[col] + columnas_estado + ["Analizadas", "Meta", "Faltantes", "Categoria"]]
 
@@ -480,31 +534,44 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
     return out
 
 def grafico_estado_supervisor(df: pd.DataFrame):
+    # Validaciones mínimas
+    if "EQUIPO_NUM" not in df.columns or "supervisor" not in df.columns or "estado_carpeta" not in df.columns:
+        st.warning("Faltan columnas necesarias para graficar vista de Supervisor.")
+        return go.Figure()
+
+    # Mapeo de supervisor por equipo
     sup_info = (
         df[["EQUIPO_NUM", "supervisor"]]
+        .dropna()
         .drop_duplicates()
         .groupby("EQUIPO_NUM")["supervisor"]
-        .agg(lambda x: ', '.join(sorted(x.dropna().unique())))
+        .agg(lambda x: ', '.join(sorted(x.unique())))
         .to_dict()
     )
 
     df["supervisor"] = df["EQUIPO_NUM"].map(sup_info)
-    df["estado_label"] = df["estado_carpeta"].map(ESTADOS_RENOM)
+    df["estado_label"] = df["estado_carpeta"].map(ESTADOS_RENOM).fillna("Otro")
+
     df["estado_label"] = pd.Categorical(
         df["estado_label"],
-        categories=[ESTADOS_RENOM[e] for e in ESTADOS_ORDEN],
+        categories=[ESTADOS_RENOM.get(e, e) for e in ESTADOS_ORDEN],
         ordered=True
     )
 
+    # Agrupar
     grp = (
         df.groupby(["EQUIPO_NUM", "estado_label", "supervisor"])
         .size()
         .reset_index(name="cantidad")
     )
 
+    # Validación si no hay datos
+    if grp.empty:
+        return px.bar(title="<b>Sin datos válidos para mostrar</b>")
+
     fig = go.Figure()
 
-    for estado in [ESTADOS_RENOM[e] for e in ESTADOS_ORDEN]:
+    for estado in [ESTADOS_RENOM.get(e, e) for e in ESTADOS_ORDEN]:
         subset = grp[grp["estado_label"] == estado]
         fig.add_trace(
             go.Bar(
@@ -527,7 +594,7 @@ def grafico_estado_supervisor(df: pd.DataFrame):
         barmode="stack",
         title="<b>Estados por EQUIPO — Vista: Supervisor</b>",
         xaxis_title="Equipo",
-        yaxis=dict(title="Cantidad", range=[0, 800],),
+        yaxis=dict(title="Cantidad", range=[0, grp["cantidad"].max() + 20]),
         font=dict(family="Arial", size=12),
         title_font=dict(size=18, color="#1F9924", family="Arial"),
         plot_bgcolor="white",
@@ -541,24 +608,37 @@ def grafico_estado_supervisor(df: pd.DataFrame):
     return fig
 
 def grafico_estado_analistas(df: pd.DataFrame):
+    # Validación mínima
+    required_cols = {"EQUIPO_NUM", "analista", "estado_carpeta"}
+    if not required_cols.issubset(df.columns):
+        st.warning("Faltan columnas necesarias para la vista de Analistas.")
+        return go.Figure()
+
+    # Asignar rol por analista en equipo
     analistas_unicos = (
         df[["EQUIPO_NUM", "analista"]]
+        .dropna()
         .drop_duplicates()
         .sort_values(["EQUIPO_NUM", "analista"])
     )
     analistas_unicos["rol"] = analistas_unicos.groupby("EQUIPO_NUM").cumcount() + 1
     analistas_unicos["rol"] = "A" + analistas_unicos["rol"].astype(str)
 
+    # Merge para agregar rol
     df = df.merge(analistas_unicos, on=["EQUIPO_NUM", "analista"], how="left")
     df["equipo_rol"] = df["EQUIPO_NUM"].astype(str) + " " + df["rol"]
+
+    # Homologar estados
     df["estado_homol"] = df["estado_carpeta"].str.lower().map(ESTADOS_RENOM).fillna("Otro")
 
+    # Agrupar
     grouped = (
         df.groupby(["EQUIPO_NUM", "analista", "equipo_rol", "estado_homol"])
         .size()
         .reset_index(name="cantidad")
     )
 
+    # Pivotar para formato de gráfico
     pivot = grouped.pivot_table(
         index=["EQUIPO_NUM", "analista", "equipo_rol"],
         columns="estado_homol",
@@ -568,6 +648,7 @@ def grafico_estado_analistas(df: pd.DataFrame):
 
     estado_cols = [col for col in pivot.columns if col not in ["EQUIPO_NUM", "analista", "equipo_rol"]]
 
+    # Crear gráfico
     fig = go.Figure()
 
     for estado in estado_cols:
@@ -581,7 +662,9 @@ def grafico_estado_analistas(df: pd.DataFrame):
                     [estado] * len(pivot),
                     pivot[estado]
                 ], axis=-1),
-                hovertemplate="<b>A:</b> %{customdata[0]}<br><b>E:</b> %{customdata[1]}<br><b>C:</b> %{customdata[2]}<extra></extra>",
+                hovertemplate="<b>Analista:</b> %{customdata[0]}<br>"
+                              "<b>Estado:</b> %{customdata[1]}<br>"
+                              "<b>Cantidad:</b> %{customdata[2]}<extra></extra>",
             )
         )
 
@@ -589,7 +672,7 @@ def grafico_estado_analistas(df: pd.DataFrame):
         barmode="stack",
         title="<b>Estados por EQUIPO — Vista: Analistas</b>",
         xaxis_title="Equipo",
-        yaxis=dict(title="Cantidad", range=[0, 400],),
+        yaxis=dict(title="Cantidad", range=[0, pivot[estado_cols].sum(axis=1).max() + 20]),
         font=dict(family="Arial", size=12),
         title_font=dict(size=18, color="#1F9924", family="Arial"),
         plot_bgcolor="white",
@@ -611,13 +694,11 @@ def grafico_estado_analistas(df: pd.DataFrame):
 
 def categorias_por_sujeto(df_base: pd.DataFrame, archivo_metas: pd.DataFrame, modulo: str) -> pd.DataFrame:
     """
-    Retorna DataFrame con:
+    Retorna un DataFrame con:
     - Sujeto (analista / supervisor / auditor)
     - Categoria ("Al día", "Atraso normal", etc)
     - EQUIPO
     - Modulo (Analistas, Supervisores, Equipos)
-
-    Basado en metas reales desde archivo_metas.
     """
 
     dfm = prepara_df_modulo(df_base, modulo)
@@ -626,31 +707,30 @@ def categorias_por_sujeto(df_base: pd.DataFrame, archivo_metas: pd.DataFrame, mo
     if col_sujeto not in dfm.columns:
         return pd.DataFrame(columns=["Sujeto", "Categoria", "EQUIPO", "Modulo"])
 
-    # Revisadas por sujeto (estados válidos según módulo)
+    # ======================
+    # Revisadas por sujeto
+    # ======================
     estados = estados_validos(modulo)
+    dfm["estado_carpeta"] = dfm["estado_carpeta"].str.lower().fillna("")
     revisadas = (
-        dfm[dfm["estado_carpeta"].str.lower().isin(estados)]
+        dfm[dfm["estado_carpeta"].isin(estados)]
         .groupby(col_sujeto)
         .size()
         .reset_index(name="revisadas")
     )
 
     # ============================
-    #  Metas reales por sujeto
+    # Metas reales por sujeto
     # ============================
-    # Se toma la meta acumulada a la fecha más reciente disponible
     archivo_metas = archivo_metas.copy()
     archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
+    archivo_metas["USUARIO"] = archivo_metas["USUARIO"].astype(str).str.strip()
+    dfm[col_sujeto] = dfm[col_sujeto].astype(str).str.strip()
 
-    # Fecha referencia = ayer
-    tz = timezone("America/Bogota")
-    hoy = datetime.now(tz).date()
     fecha_ref = obtener_fecha_corte_valida(archivo_metas)
-
     metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_ref]
 
     if "USUARIO" not in metas_dia.columns:
-        # Si no hay metas por usuario, devolvemos vacío pero consistente
         return pd.DataFrame(columns=["Sujeto", "Categoria", "EQUIPO", "Modulo"])
 
     metas_sujeto = (
@@ -660,18 +740,18 @@ def categorias_por_sujeto(df_base: pd.DataFrame, archivo_metas: pd.DataFrame, mo
         .rename(columns={"USUARIO": col_sujeto, "META DIARIA A LA FECHA": "meta_sujeto"})
     )
 
-    # Unir revisadas con metas reales
+    # ======================
+    # Unión y clasificación
+    # ======================
     resumen = pd.merge(revisadas, metas_sujeto, on=col_sujeto, how="left").fillna(0)
-
-    # Faltantes y categoría real
     resumen["faltantes"] = resumen["meta_sujeto"] - resumen["revisadas"]
     resumen["Categoria"] = resumen["faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
 
-    # Agregar EQUIPO del usuario
-    equipo_map = (
-        df_base[[col_sujeto, "EQUIPO"]]
-        .drop_duplicates()
-    )
+    # ======================
+    # Asociar equipo
+    # ======================
+    equipo_map = df_base[[col_sujeto, "EQUIPO"]].drop_duplicates()
+    equipo_map[col_sujeto] = equipo_map[col_sujeto].astype(str).str.strip()
     resumen = resumen.merge(equipo_map, on=col_sujeto, how="left")
 
     resumen["Modulo"] = modulo
@@ -683,36 +763,43 @@ def aplicar_filtro_categoria_transversal(df_in: pd.DataFrame, categoria_sel: str
                                          cat_analistas: pd.DataFrame,
                                          cat_supervisores: pd.DataFrame,
                                          cat_equipos: pd.DataFrame) -> pd.DataFrame:
-
     if categoria_sel in (None, "", "Todos"):
         return df_in
 
     out = df_in.copy()
 
-    if "analista" in out.columns and not cat_analistas.empty:
+    # Asegurar consistencia de claves para merge
+    for col in ["analista", "supervisor", "auditor"]:
+        if col in out.columns:
+            out[col] = out[col].astype(str).str.strip()
+
+    if not cat_analistas.empty and "analista" in out.columns:
+        cat_analistas["Sujeto"] = cat_analistas["Sujeto"].astype(str).str.strip()
         out = out.merge(
             cat_analistas[["Sujeto", "Categoria"]].rename(columns={"Sujeto": "analista", "Categoria": "cat_analista"}),
             on="analista", how="left"
         )
-    if "supervisor" in out.columns and not cat_supervisores.empty:
+    if not cat_supervisores.empty and "supervisor" in out.columns:
+        cat_supervisores["Sujeto"] = cat_supervisores["Sujeto"].astype(str).str.strip()
         out = out.merge(
             cat_supervisores[["Sujeto", "Categoria"]].rename(columns={"Sujeto": "supervisor", "Categoria": "cat_supervisor"}),
             on="supervisor", how="left"
         )
-    if "auditor" in out.columns and not cat_equipos.empty:
+    if not cat_equipos.empty and "auditor" in out.columns:
+        cat_equipos["Sujeto"] = cat_equipos["Sujeto"].astype(str).str.strip()
         out = out.merge(
             cat_equipos[["Sujeto", "Categoria"]].rename(columns={"Sujeto": "auditor", "Categoria": "cat_auditor"}),
             on="auditor", how="left"
         )
 
+    # Crear columna global combinada
     out["categoria_global"] = (
-        out["cat_analista"]
-        .fillna(out.get("cat_supervisor"))
-        .fillna(out.get("cat_auditor"))
+        out.get("cat_analista")
+        .combine_first(out.get("cat_supervisor"))
+        .combine_first(out.get("cat_auditor"))
     )
 
     return out[out["categoria_global"] == categoria_sel].copy()
-
 
 # ============ NAVEGACIÓN ============
 
@@ -920,32 +1007,38 @@ if st.session_state.pagina == "Resumen":
 def modulo_vista(nombre_modulo: str):
     st.markdown(f"<h1 style='color:#1F9924;'>{nombre_modulo}</h1>", unsafe_allow_html=True)
     dfm = prepara_df_modulo(df_filtrado, nombre_modulo)
-    
-    fecha_corte = obtener_fecha_corte_valida(archivo_metas)
-    st.info(f"Fecha de corte: **{fecha_corte}**")
-    
-    archivo_metas = archivo_metas.copy()
-    archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
-    archivo_metas["CLAS"] = archivo_metas["CLAS"].astype(str).str.strip().str.title()
-    
-    mapa_clas = {
+
+    # === Mapear nombre del módulo a USUARIO en metas ===
+    rol_map = {
         "Analistas": "Análisis",
         "Supervisores": "Supervisión",
         "Equipos": "Auditoria"
     }
-    rol_clas = mapa_clas.get(nombre_modulo, "")
-    
-    metas_corte = archivo_metas[archivo_metas["FECHA"] == fecha_corte]
-    metas_modulo = metas_corte[metas_corte["CLAS"] == rol_clas]
-    
-    meta_total = metas_modulo["META EQUIPO A LA FECHA"].sum() if "META EQUIPO A LA FECHA" in metas_modulo.columns else 0
-    
-    # === Calcular desarrolladas válidas ===
+    rol_usuario = rol_map.get(nombre_modulo, "")
+
+    # === Preparar archivo metas ===
+    archivo_metas = archivo_metas.copy()
+    archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
+    archivo_metas["USUARIO"] = archivo_metas["USUARIO"].astype(str).str.strip().str.title()
+
+    # === Obtener fecha válida (última si no hay de hoy) ===
+    fecha_corte = obtener_fecha_corte_valida(archivo_metas)
+    st.info(f"Fecha de corte: **{fecha_corte}**")
+
+    # === Filtrar metas para rol y fecha ===
+    metas_rol_fecha = archivo_metas[
+        (archivo_metas["FECHA"] == fecha_corte) &
+        (archivo_metas["USUARIO"] == rol_usuario)
+    ]
+
+    meta_total = metas_rol_fecha["META EQUIPO A LA FECHA"].sum() if "META EQUIPO A LA FECHA" in metas_rol_fecha.columns else 0
+
+    # === Carpeta desarrolladas válidas ===
     validos = estados_validos(nombre_modulo)
     desarrolladas_total = dfm["estado_carpeta"].str.lower().isin(validos).sum() if "estado_carpeta" in dfm.columns else 0
     diferencia_total = desarrolladas_total - meta_total
 
-    # ====================== MÉTRICAS ======================
+    # === Mostrar métricas ===
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("📂 Total carpetas", f"{len(dfm):,}".replace(",", "."))
     c2.metric("✔️ Desarrolladas", f"{desarrolladas_total:,}".replace(",", "."))
