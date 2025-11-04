@@ -384,7 +384,9 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd
 def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame) -> pd.DataFrame:
     col = sujetos_col(modulo)
 
+    # Validar columna base
     if df_mod.empty or col not in df_mod.columns:
+        st.warning(f"No se encontró la columna esperada '{col}' para el módulo '{modulo}'.")
         return pd.DataFrame(columns=["Categoria", col.capitalize(), "Analizadas", "Meta", "Faltantes"])
 
     # Estados válidos según módulo
@@ -395,11 +397,11 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
     hoy = datetime.now(tz).date()
     fecha_ref = hoy - timedelta(days=1)
 
-    # Limpiar y filtrar
+    # Limpiar y filtrar datos
     df_mod = df_mod.dropna(subset=["estado_carpeta", col])
     df_mod["estado_carpeta"] = df_mod["estado_carpeta"].str.strip().str.lower()
 
-    # Agrupar estados por persona
+    # Agrupación por sujeto y estado
     pivot = (
         df_mod
         .groupby([col, "estado_carpeta"])
@@ -408,35 +410,48 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
         .reset_index()
     )
 
-    # Asegurar columnas de estado
+    # Asegurar columnas esperadas
     for estado in ESTADOS_ORDEN:
         if estado not in pivot.columns:
             pivot[estado] = 0
 
-    # Analizadas (solo válidas)
+    # Calcular total de analizadas (solo estados válidos)
     pivot["Analizadas"] = pivot[[e for e in ESTADOS_ORDEN if e in estados_efectivos]].sum(axis=1)
 
-    # =========================
+    # ============================
     #  Cargar metas por sujeto
-    # =========================
-    archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
-    metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_ref]
-
-    if "USUARIO" not in metas_dia.columns:
+    # ============================
+    if "FECHA" not in archivo_metas.columns or "USUARIO" not in archivo_metas.columns:
+        st.warning("Archivo de metas no tiene columnas 'FECHA' o 'USUARIO'.")
         pivot["Meta"] = 0
     else:
-        metas_sujeto = (
-            metas_dia.groupby("USUARIO")["META DIARIA A LA FECHA"]
-            .sum()
-            .reset_index()
-            .rename(columns={"USUARIO": col, "META DIARIA A LA FECHA": "Meta"})
-        )
-        pivot = pivot.merge(metas_sujeto, on=col, how="left")
-        pivot["Meta"] = pivot["Meta"].fillna(0).astype(int)
+        archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
+        metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_ref]
 
+        if metas_dia.empty:
+            st.warning("No hay metas disponibles para la fecha de corte.")
+            pivot["Meta"] = 0
+        else:
+            metas_sujeto = (
+                metas_dia.groupby("USUARIO")["META DIARIA A LA FECHA"]
+                .sum()
+                .reset_index()
+                .rename(columns={"USUARIO": col, "META DIARIA A LA FECHA": "Meta"})
+            )
+
+            # Validar que el merge sea posible
+            if col not in metas_sujeto.columns or col not in pivot.columns:
+                st.warning(f"No se puede unir metas: columna '{col}' no encontrada en datos.")
+                pivot["Meta"] = 0
+            else:
+                pivot = pivot.merge(metas_sujeto, on=col, how="left")
+                pivot["Meta"] = pivot["Meta"].fillna(0).astype(int)
+
+    # Calcular faltantes y clasificar
     pivot["Faltantes"] = pivot["Meta"] - pivot["Analizadas"]
     pivot["Categoria"] = pivot["Faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
 
+    # Ordenar y estructurar salida
     columnas_estado = ESTADOS_ORDEN
     out = pivot[[col] + columnas_estado + ["Analizadas", "Meta", "Faltantes", "Categoria"]]
 
