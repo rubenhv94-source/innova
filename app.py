@@ -1157,7 +1157,7 @@ def modulo_vista(nombre_modulo: str):
     # Tabla resumen a nivel de "Equipos": usamos auditor como sujeto base
     ttabla = tabla_resumen(dfm, "Equipos", archivo_metas)
     st.markdown(f"<h3 style='color:#1F9924; font-weight:600; margin-top: 1em;'>Resumen {nombre_modulo}</h3>", unsafe_allow_html=True)
-    st.dataframe(tabla, use_container_width=True)
+    st.dataframe(ttabla, use_container_width=True)
 
 # ============ ENRUTAMIENTO ============ 
 if st.session_state.pagina == "Analistas": 
