@@ -925,18 +925,30 @@ def modulo_vista(nombre_modulo: str):
     fecha_corte = obtener_fecha_corte_valida(archivo_metas)
     st.info(f"Fecha de corte: **{fecha_corte}**")
 
-    # --- Filtrar metas por fecha y clas ---
-    rol = "Auditoria" if nombre_modulo == "Equipos" else nombre_modulo[:-1]  # ej. Analistas → Analista
+    # --- Filtrar metas por fecha y rol ---
+    archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
+    archivo_metas["CLAS"] = archivo_metas["CLAS"].astype(str).str.strip().str.upper()
+    
+    # Mapeo correcto de rol a CLAS del archivo
+    rol_map = {
+        "Analistas": "ANALISTA",
+        "Supervisores": "SUPERVISOR",
+        "Equipos": "AUDITOR"   # En tu archivo puede ser "AUDITOR" o "AUDITORIA"
+    }
+    rol_clas = rol_map.get(nombre_modulo, "").upper()
+    
+    fecha_corte = obtener_fecha_corte_valida(archivo_metas)
     metas_corte = archivo_metas[archivo_metas["FECHA"] == fecha_corte]
-    metas_modulo = metas_corte[metas_corte["CLAS"] == rol]
-
-    meta_total = metas_modulo["META EQUIPO A LA FECHA"].sum()
+    
+    metas_modulo = metas_corte[metas_corte["CLAS"] == rol_clas]
+    
+    meta_total = metas_modulo["META EQUIPO A LA FECHA"].sum() if "META EQUIPO A LA FECHA" in metas_modulo.columns else 0
     n_sujetos = metas_modulo["USUARIO"].nunique()
     per_subject_meta = (
         metas_modulo.groupby("USUARIO")["META EQUIPO A LA FECHA"].sum().mean()
         if not metas_modulo.empty else 0
     )
-
+    
     # Carpeta desarrolladas válidas
     validos = estados_validos(nombre_modulo)
     desarrolladas_total = dfm["estado_carpeta"].str.lower().isin(validos).sum() if "estado_carpeta" in dfm.columns else 0
