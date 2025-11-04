@@ -498,18 +498,23 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
     # ============================
     # Cargar metas por sujeto
     # ============================
-    if metas_dia.empty or "META DIARIA A LA FECHA" not in metas_dia.columns:
-        st.warning(f"No hay metas disponibles para {clas} en la fecha {fecha_ref}.")
+    if metas_dia.empty or "META DIARIA A LA FECHA" not in metas_dia.columns or "PERSONAS" not in metas_dia.columns:
+        st.warning(f"No hay metas individuales para {clas} en la fecha {fecha_ref}.")
         pivot["Meta"] = 0
     else:
+        # Asegurarse de que los nombres coincidan en formato
+        metas_dia["PERSONAS"] = metas_dia["PERSONAS"].astype(str).str.strip()
+        pivot[col] = pivot[col].astype(str).str.strip()
+    
+        # Agrupar metas por persona
         metas_sujeto = (
             metas_dia
-            .groupby("USUARIO")["META DIARIA A LA FECHA"]
+            .groupby("PERSONAS")["META DIARIA A LA FECHA"]
             .sum()
             .reset_index()
-            .rename(columns={"USUARIO": col, "META DIARIA A LA FECHA": "Meta"})
+            .rename(columns={"PERSONAS": col, "META DIARIA A LA FECHA": "Meta"})
         )
-
+    
         # Unir metas con pivot
         if col in metas_sujeto.columns:
             pivot = pivot.merge(metas_sujeto, on=col, how="left")
