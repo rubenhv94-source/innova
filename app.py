@@ -489,11 +489,9 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
         (archivo_metas["USUARIO"].str.lower() == clas)
     ].copy()
 
-    # --- Limpiar DF principal ---
     df_mod = df_mod.dropna(subset=["estado_carpeta", col])
     df_mod["estado_carpeta"] = df_mod["estado_carpeta"].str.strip().str.lower()
 
-    # Agrupación por estado
     pivot = (
         df_mod
         .groupby([col, "estado_carpeta"])
@@ -508,44 +506,51 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
 
     pivot["Analizadas"] = pivot[[e for e in ESTADOS_ORDEN if e in estados_efectivos]].sum(axis=1)
 
-    # === CÁLCULO DE META ===
-    if modulo == "Equipos":
-        # Contar supervisores únicos por auditor
-        relacion = (
-            df_mod[["auditor", "supervisor"]]
-            .dropna()
-            .drop_duplicates()
-            .groupby("auditor")
-            .size()
-            .reset_index(name="supervisores")
-        )
-
-        if metas_dia.empty or "META DIARIA A LA FECHA" not in metas_dia.columns:
-            st.warning(f"No hay metas disponibles para '{clas}' en la fecha {fecha_ref}.")
-            relacion["Meta"] = 0
-        else:
-            meta_modulo_total = metas_dia["META DIARIA A LA FECHA"].sum()
-            relacion["Meta"] = (relacion["supervisores"] * meta_modulo_total).round(0)
-
-        # Unir con pivot
-        pivot = pivot.merge(relacion[[col, "Meta"]], on=col, how="left")
-        pivot["Meta"] = pivot["Meta"].fillna(0).astype(int)
-
+    # =====================
+    # Cálculo de metas
+    # =====================
+    if metas_dia.empty or "META DIARIA A LA FECHA" not in metas_dia.columns:
+        st.warning(f"No hay metas disponibles para '{clas}' en la fecha {fecha_ref}.")
+        pivot["Meta"] = 0
     else:
-        # Asignar misma meta para todos los sujetos del módulo
-        if metas_dia.empty or "META DIARIA A LA FECHA" not in metas_dia.columns:
-            st.warning(f"No hay metas disponibles para '{clas}' en la fecha {fecha_ref}.")
-            pivot["Meta"] = 0
-        else:
-            meta_total = metas_dia["META DIARIA A LA FECHA"].sum()
-            pivot["Meta"] = meta_total
-            pivot["Meta"] = pivot["Meta"].astype(int)
+        total_meta = metas_dia["META DIARIA A LA FECHA"].sum()
 
-    # === Faltantes y Clasificación ===
+        if modulo == "Equipos":
+            # Contar cuántos supervisores tiene cada auditor
+            if "supervisor" not in df_mod.columns:
+                st.warning("No se encontró columna 'supervisor' para calcular metas por auditor.")
+                pivot["Meta"] = int(total_meta)
+            else:
+                relacion = (
+                    df_mod[["auditor", "supervisor"]]
+                    .dropna()
+                    .drop_duplicates()
+                    .groupby("auditor")["supervisor"]
+                    .nunique()
+                    .reset_index(name="n_supervisores")
+                )
+
+                total_supervisores = relacion["n_supervisores"].sum()
+                if total_supervisores == 0:
+                    st.warning("No se encontraron supervisores válidos para auditores.")
+                    pivot["Meta"] = int(total_meta)
+                else:
+                    # Meta proporcional por auditor
+                    relacion["Meta"] = (relacion["n_supervisores"] / total_supervisores * total_meta).round().astype(int)
+                    pivot = pivot.merge(relacion[["auditor", "Meta"]], left_on=col, right_on="auditor", how="left")
+                    pivot["Meta"] = pivot["Meta"].fillna(0).astype(int)
+                    pivot.drop(columns=["auditor"], inplace=True)
+        else:
+            # Para otros módulos, meta total se asigna igual
+            pivot["Meta"] = int(total_meta)
+
+    # =====================
+    # Faltantes y Categoría
+    # =====================
     pivot["Faltantes"] = pivot["Meta"] - pivot["Analizadas"]
     pivot["Categoria"] = pivot["Faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
 
-    # === Orden final ===
+    # Orden de salida
     columnas_estado = ESTADOS_ORDEN
     out = pivot[[col] + columnas_estado + ["Analizadas", "Meta", "Faltantes", "Categoria"]]
 
@@ -556,80 +561,6 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
     out = out.rename(columns={col: col.capitalize(), **{e: ESTADOS_RENOM.get(e, e) for e in columnas_estado}})
 
     return out
-
-def grafico_estado_supervisor(df: pd.DataFrame):
-    # Validaciones mínimas
-    if "EQUIPO_NUM" not in df.columns or "supervisor" not in df.columns or "estado_carpeta" not in df.columns:
-        st.warning("Faltan columnas necesarias para graficar vista de Supervisor.")
-        return go.Figure()
-
-    # Mapeo de supervisor por equipo
-    sup_info = (
-        df[["EQUIPO_NUM", "supervisor"]]
-        .dropna()
-        .drop_duplicates()
-        .groupby("EQUIPO_NUM")["supervisor"]
-        .agg(lambda x: ', '.join(sorted(x.unique())))
-        .to_dict()
-    )
-
-    df["supervisor"] = df["EQUIPO_NUM"].map(sup_info)
-    df["estado_label"] = df["estado_carpeta"].map(ESTADOS_RENOM).fillna("Otro")
-
-    df["estado_label"] = pd.Categorical(
-        df["estado_label"],
-        categories=[ESTADOS_RENOM.get(e, e) for e in ESTADOS_ORDEN],
-        ordered=True
-    )
-
-    # Agrupar
-    grp = (
-        df.groupby(["EQUIPO_NUM", "estado_label", "supervisor"])
-        .size()
-        .reset_index(name="cantidad")
-    )
-
-    # Validación si no hay datos
-    if grp.empty:
-        return px.bar(title="<b>Sin datos válidos para mostrar</b>")
-
-    fig = go.Figure()
-
-    for estado in [ESTADOS_RENOM.get(e, e) for e in ESTADOS_ORDEN]:
-        subset = grp[grp["estado_label"] == estado]
-        fig.add_trace(
-            go.Bar(
-                x=subset["EQUIPO_NUM"],
-                y=subset["cantidad"],
-                name=estado,
-                customdata=np.stack([
-                    subset["EQUIPO_NUM"],
-                    subset["supervisor"],
-                    subset["estado_label"]
-                ], axis=-1),
-                hovertemplate="<b>Equipo:</b> %{customdata[0]}<br>"
-                              "<b>Supervisor:</b> %{customdata[1]}<br>"
-                              "<b>Estado:</b> %{customdata[2]}<br>"
-                              "<b>Cantidad:</b> %{y}<extra></extra>",
-            )
-        )
-
-    fig.update_layout(
-        barmode="stack",
-        title="<b>Estados por EQUIPO — Vista: Supervisor</b>",
-        xaxis_title="Equipo",
-        yaxis=dict(title="Cantidad", range=[0, grp["cantidad"].max() + 20]),
-        font=dict(family="Arial", size=12),
-        title_font=dict(size=18, color="#1F9924", family="Arial"),
-        plot_bgcolor="white",
-        legend_title_text="Estado",
-        height=500,
-        margin=dict(l=30, r=30, t=60, b=70),
-        bargap=0.2,
-        colorway=COLOR_PALETTE
-    )
-
-    return fig
 
 def grafico_estado_analistas(df: pd.DataFrame):
     # Validación mínima
