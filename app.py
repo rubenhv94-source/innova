@@ -489,9 +489,11 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
         (archivo_metas["USUARIO"].str.lower() == clas)
     ].copy()
 
+    # --- Limpiar DF principal ---
     df_mod = df_mod.dropna(subset=["estado_carpeta", col])
     df_mod["estado_carpeta"] = df_mod["estado_carpeta"].str.strip().str.lower()
 
+    # Agrupación por estado
     pivot = (
         df_mod
         .groupby([col, "estado_carpeta"])
@@ -506,50 +508,44 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
 
     pivot["Analizadas"] = pivot[[e for e in ESTADOS_ORDEN if e in estados_efectivos]].sum(axis=1)
 
-    # =====================
-    # Cálculo de metas
-    # =====================
-    if metas_dia.empty or "META DIARIA A LA FECHA" not in metas_dia.columns:
-        st.warning(f"No hay metas disponibles para '{clas}' en la fecha {fecha_ref}.")
-        pivot["Meta"] = 0
-    else:
-        total_meta = metas_dia["META DIARIA A LA FECHA"].sum()
+    # === CÁLCULO DE META ===
+    if modulo == "Equipos":
+        # Contar supervisores únicos por auditor
+        relacion = (
+            df_mod[["auditor", "supervisor"]]
+            .dropna()
+            .drop_duplicates()
+            .groupby("auditor")
+            .size()
+            .reset_index(name="supervisores")
+        )
 
-        if modulo == "Equipos":
-            # Contar cuántos supervisores tiene cada auditor
-            if "supervisor" not in df_mod.columns:
-                st.warning("No se encontró columna 'supervisor' para calcular metas por auditor.")
-                pivot["Meta"] = int(total_meta)
-            else:
-                relacion = (
-                    df_mod[["auditor", "supervisor"]]
-                    .dropna()
-                    .drop_duplicates()
-                    .groupby("auditor")["supervisor"]
-                    .nunique()
-                    .reset_index(name="n_supervisores")
-                )
-
-                total_supervisores = relacion["n_supervisores"].sum()
-                if total_supervisores == 0:
-                    st.warning("No se encontraron supervisores válidos para auditores.")
-                    pivot["Meta"] = int(total_meta)
-                else:
-                    # Meta proporcional por auditor
-                    relacion["Meta"] = (relacion["n_supervisores"] / total_supervisores * total_meta).round().astype(int)
-                    pivot = pivot.merge(relacion[[col, "Meta"]], on=col, how="left")
-                    pivot["Meta"] = pivot["Meta"].fillna(0).astype(int)
+        if metas_dia.empty or "META DIARIA A LA FECHA" not in metas_dia.columns:
+            st.warning(f"No hay metas disponibles para '{clas}' en la fecha {fecha_ref}.")
+            relacion["Meta"] = 0
         else:
-            # Para otros módulos, meta total se asigna igual
-            pivot["Meta"] = int(total_meta)
+            meta_modulo_total = metas_dia["META DIARIA A LA FECHA"].sum()
+            relacion["Meta"] = (relacion["supervisores"] * meta_modulo_total).round(0)
 
-    # =====================
-    # Faltantes y Categoría
-    # =====================
+        # Unir con pivot
+        pivot = pivot.merge(relacion[[col, "Meta"]], on=col, how="left")
+        pivot["Meta"] = pivot["Meta"].fillna(0).astype(int)
+
+    else:
+        # Asignar misma meta para todos los sujetos del módulo
+        if metas_dia.empty or "META DIARIA A LA FECHA" not in metas_dia.columns:
+            st.warning(f"No hay metas disponibles para '{clas}' en la fecha {fecha_ref}.")
+            pivot["Meta"] = 0
+        else:
+            meta_total = metas_dia["META DIARIA A LA FECHA"].sum()
+            pivot["Meta"] = meta_total
+            pivot["Meta"] = pivot["Meta"].astype(int)
+
+    # === Faltantes y Clasificación ===
     pivot["Faltantes"] = pivot["Meta"] - pivot["Analizadas"]
     pivot["Categoria"] = pivot["Faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
 
-    # Orden de salida
+    # === Orden final ===
     columnas_estado = ESTADOS_ORDEN
     out = pivot[[col] + columnas_estado + ["Analizadas", "Meta", "Faltantes", "Categoria"]]
 
