@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import plotly.io as pio
 from datetime import datetime, date, timedelta
 import math
+from pytz import timezone
 
 # ============ CONFIG VISUAL ============
 pio.templates.default = "seaborn"
@@ -58,24 +59,95 @@ def cargar_datos(url: str) -> pd.DataFrame:
 
 df = cargar_datos(CSV_URL)
 
-# ============ UTILIDADES ============
-START_DATE = date(2025, 9, 16)
-ESTADOS_ORDEN = ["asignada", "devuelta", "calificada", "aprobada", "auditada"]
-ESTADOS_RENOM = {
-    "": "Por asignar",
-    "asignada": "0. asignada",
-    "devuelta": "1. devuelta",
-    "calificada": "2. calificada",
-    "aprobada": "3. aprobada",
-    "auditada": "4. auditada"
-}
+METAS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQVxG-bO1D5mkgUFCU35drRV4tyXT9aRaW6q4zzWGa9nFAqkLVdZxaIjwD1cEMJIAXuI4xTBlhHS1og/pub?gid=1199329439&single=true&output=csv"  # <-- Pega aquí la URL real
 
-def business_days_since_start(end_date: date) -> int:
-    """Días hábiles (L-V) entre START_DATE y end_date (inclusive)."""
-    if end_date < START_DATE:
-        return 0
-    rng = pd.bdate_range(START_DATE, end_date)
-    return len(rng)
+@st.cache_data(ttl=600)
+def cargar_metas(url: str) -> pd.DataFrame:
+    df = pd.read_csv(url, dtype=str)
+    df.columns = df.columns.str.strip()
+    
+    # Limpieza de columnas numéricas
+    for col in ["META EQUIPO A LA FECHA", "META DIARIA", "META DIARIA A LA FECHA", "META DIARIA EQUIPO"]:
+        if col in df.columns:
+            df[col] = (
+                df[col].astype(str)
+                .str.replace("-", "0")
+                .str.replace(".", "", regex=False)
+                .str.replace(",", "", regex=False)
+                .fillna("0")
+            )
+            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0).astype(int)
+    
+    # Fecha como datetime.date
+    if "FECHA" in df.columns:
+        df["FECHA"] = pd.to_datetime(df["FECHA"], errors="coerce").dt.date
+    
+    return df
+
+# ============ UTILIDADES ============
+
+def limpiar_datos_por_modulo(df: pd.DataFrame, archivo_metas: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    archivo_metas = archivo_metas.copy()
+
+    for col in df.columns:
+        df[col] = df[col].astype(str).str.strip()
+
+    # === Fecha de referencia ===
+    tz = timezone("America/Bogota")
+    hoy = datetime.now(tz).date()
+    fecha_referencia = hoy - timedelta(days=1)
+
+    # === Asegurar consistencia en FECHA ===
+    archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
+    metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_referencia]
+
+    # === Agrupar metas por ROL ===
+    metas_usuario = (
+        metas_dia.groupby("CLAS")["META EQUIPO A LA FECHA"]
+        .sum()
+        .reset_index()
+        .rename(columns={
+            "CLAS": "ROL",
+            "META EQUIPO A LA FECHA": "Meta Proyectada a la Fecha"
+        })
+    )
+
+    # === Normalizar estado en df principal ===
+    df["estado_carpeta"] = df["estado_carpeta"].str.lower().fillna("")
+
+    condiciones = {
+        "Análisis": ["calificada", "aprobada", "auditada"],
+        "Supervisión": ["aprobada", "auditada"],
+        "Auditoria": ["auditada"]
+    }
+
+    resultados = []
+    for rol, estados in condiciones.items():
+        revisadas = df["estado_carpeta"].isin(estados).sum()
+        resultados.append({
+            "ROL": rol,
+            "Carpetas Revisadas": revisadas
+        })
+
+    df_revisadas = pd.DataFrame(resultados)
+
+    # === Fusionar metas + revisadas ===
+    resumen = pd.merge(metas_usuario, df_revisadas, on="ROL", how="outer").fillna(0)
+
+    resumen["Meta Proyectada a la Fecha"] = pd.to_numeric(resumen["Meta Proyectada a la Fecha"], errors="coerce").fillna(0)
+    resumen["Carpetas Revisadas"] = pd.to_numeric(resumen["Carpetas Revisadas"], errors="coerce").fillna(0)
+
+    resumen["% Avance"] = np.where(
+        resumen["Meta Proyectada a la Fecha"] == 0,
+        0,
+        (resumen["Carpetas Revisadas"] / resumen["Meta Proyectada a la Fecha"] * 100).round(2),
+    )
+
+    # Guardar en sesión
+    st.session_state["df_resumen_vrm"] = resumen
+
+    return resumen
 
 def sujetos_col(modulo: str) -> str:
     return {"Analistas": "analista", "Supervisores": "supervisor", "Equipos": "auditor"}[modulo]
@@ -123,37 +195,18 @@ def desarrolladas_por_sujeto(df_mod: pd.DataFrame, modulo: str) -> pd.DataFrame:
     g = df_ok.groupby(col, dropna=False).size().reset_index(name="desarrolladas")
     return g
 
-def meta_acumulada(modulo: str, df_mod: pd.DataFrame, today: date | None = None) -> tuple[int, int]:
-    if today is None:
-        today = date.today()
-    ayer = today - timedelta(days=1)
-    dias_habiles = business_days_since_start(ayer)
-    if dias_habiles <= 0:
-        return 0, 0
+# ============ GRAFICOS ============
 
-    col = sujetos_col('Supervisores') if modulo == "Equipos" else sujetos_col(modulo)
-    if col not in df_mod.columns:
-        return 0, 0
+def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, df_resumen_vrm: pd.DataFrame):
+    rol_map = {"Analistas": "Análisis", "Supervisores": "Supervisión", "Equipos": "Auditoria"}
+    rol = rol_map.get(modulo, None)
+    
+    total_meta = 0
+    if rol and not df_resumen_vrm.empty:
+        meta_row = df_resumen_vrm[df_resumen_vrm["ROL"] == rol]
+        if not meta_row.empty:
+            total_meta = int(meta_row["Meta Proyectada a la Fecha"].values[0])
 
-    sujetos_unicos = (
-        df_mod[col]
-        .astype(str)
-        .str.strip()
-        .str.lower()
-        .replace("", pd.NA)
-        .dropna()
-        .unique()
-    )
-
-    n_sujetos = len(sujetos_unicos)
-    if n_sujetos == 0:
-        return 0, 0
-
-    por_sujeto = 17 if modulo == "Analistas" else 34
-    meta = dias_habiles * por_sujeto * n_sujetos
-    return meta, n_sujetos
-
-def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, total_meta: int):
     conteo = (
         df_mod["estado_carpeta"]
         .fillna("")
@@ -182,25 +235,26 @@ def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, total_meta: int):
         color="estado_carpeta",
         color_discrete_sequence=COLOR_PALETTE,
         text="label",
-        title="<b>Distribución por estado</b>",
+        title=f"<b>Distribución por estado — {modulo}</b>",
     )
 
-    fig.add_scatter(
-        x=conteo["estado_carpeta"],
-        y=[total_meta] * len(conteo),
-        mode="lines",
-        name="Meta acumulada",
-        line=dict(color="#007BFF", width=2, dash="dash"),
-    )
+    if total_meta > 0:
+        fig.add_scatter(
+            x=conteo["estado_carpeta"],
+            y=[total_meta] * len(conteo),
+            mode="lines",
+            name="Meta acumulada",
+            line=dict(color="#007BFF", width=2, dash="dash"),
+        )
 
-    fig.add_annotation(
-        text=f"<b>Meta: {total_meta:,.0f}</b>".replace(",", "X").replace(".", ",").replace("X", "."),
-        xref="paper", yref="paper",
-        x=0.98, y=1.05,
-        showarrow=False,
-        font=dict(size=13, color="#007BFF", family="Arial"),
-        align="right",
-    )
+        fig.add_annotation(
+            text=f"<b>Meta: {total_meta:,.0f}</b>".replace(",", "X").replace(".", ",").replace("X", "."),
+            xref="paper", yref="paper",
+            x=0.98, y=1.05,
+            showarrow=False,
+            font=dict(size=13, color="#007BFF", family="Arial"),
+            align="right",
+        )
 
     fig.update_layout(
         showlegend=False,
@@ -213,17 +267,73 @@ def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, total_meta: int):
     )
     return fig
 
-def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int):
+
+def grafico_avance_por_rol(df_resumen: pd.DataFrame, rol: str):
+    row = df_resumen[df_resumen["ROL"] == rol]
+    if row.empty:
+        return go.Figure()
+
+    meta = int(row["Meta Proyectada a la Fecha"].values[0])
+    revisadas = int(row["Carpetas Revisadas"].values[0])
+    porcentaje = float(row["% Avance"].values[0])
+
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number+delta",
+        value=porcentaje,
+        delta={"reference": 100, "increasing": {"color": "red"}, "decreasing": {"color": "green"}},
+        title={"text": f"<b>Avance — {rol}</b>"},
+        gauge={
+            "axis": {"range": [0, 100]},
+            "bar": {"color": "#1F9924"},
+            "steps": [
+                {"range": [0, 50], "color": "#e8f5e9"},
+                {"range": [50, 100], "color": "#c8e6c9"}
+            ],
+        },
+        domain={'x': [0, 1], 'y': [0, 1]}
+    ))
+    fig.update_layout(height=320, margin=dict(t=50, b=30, l=30, r=30))
+    return fig
+
+
+def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame):
     col = sujetos_col(modulo)
-    dev = desarrolladas_por_sujeto(df_mod, modulo)
-    if dev.empty:
+    if df_mod.empty or col not in df_mod.columns:
         return px.bar(title="<b>Sin datos para mostrar</b>")
 
-    dev["meta"] = per_subject_meta
-    dev["atraso"] = dev["meta"] - dev["desarrolladas"]
-    dev["categoria"] = dev["atraso"].apply(lambda x: clasifica_categoria(int(x), modulo))
+    # Fecha de referencia
+    tz = timezone("America/Bogota")
+    hoy = datetime.now(tz).date()
+    fecha_ref = hoy - timedelta(days=1)
 
-    cat_count = dev.groupby("categoria").size().reset_index(name="cantidad")
+    # Revisadas por persona
+    estados = estados_validos(modulo)
+    df_ok = df_mod[df_mod["estado_carpeta"].str.lower().isin(estados)]
+    desarrolladas = (
+        df_ok.groupby(col)
+        .size()
+        .reset_index(name="revisadas")
+    )
+
+    # Metas por persona
+    archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
+    metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_ref]
+
+    if "USUARIO" not in metas_dia.columns:
+        return px.bar(title="<b>Metas no disponibles</b>")
+
+    metas_sujeto = (
+        metas_dia.groupby("USUARIO")["META DIARIA A LA FECHA"]
+        .sum()
+        .reset_index()
+        .rename(columns={"USUARIO": col, "META DIARIA A LA FECHA": "meta"})
+    )
+
+    df = pd.merge(desarrolladas, metas_sujeto, on=col, how="left").fillna(0)
+    df["atraso"] = df["meta"] - df["revisadas"]
+    df["categoria"] = df["atraso"].apply(lambda x: clasifica_categoria(int(x), modulo))
+
+    cat_count = df.groupby("categoria").size().reset_index(name="cantidad")
     orden = ["Al día", "Atraso normal", "Atraso medio", "Atraso alto"]
     cat_count["categoria"] = pd.Categorical(cat_count["categoria"], categories=orden, ordered=True)
     cat_count = cat_count.sort_values("categoria")
@@ -250,85 +360,26 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, per_subject_meta:
     )
     return fig
 
-def grafico_avance_total(total: int, avance: int, meta_ref: int | None = None):
-    porcentaje = (avance / total * 100) if total > 0 else 0
 
-    fig = go.Figure(go.Indicator(
-        mode="gauge",
-        value=avance,
-        title={
-            "text": "<b>Avance total de carpetas</b>",
-            "font": {"size": 18, "color": "#1F9924"}
-        },
-        gauge={
-            "axis": {"range": [0, total], "tickwidth": 1, "tickcolor": "#ccc", "tickfont": {"size": 10}},
-            "bar": {"color": "#2e7d32", "thickness": 0.5},
-            "bgcolor": "white",
-            "steps": [
-                {"range": [0, total * 0.5], "color": "#e0f2f1"},
-                {"range": [total * 0.5, total], "color": "#e0f2f1"}
-            ],
-            "borderwidth": 2,
-            "bordercolor": "#cccccc"
-        },
-        domain={'x': [0, 1], 'y': [0, 1]}
-    ))
-
-    valor_formateado = f"{avance:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    fig.add_annotation(
-        text=f"<b style='font-size:36px; color:#000;'>{valor_formateado}</b>",
-        x=0.5, y=0, showarrow=False, xanchor="center"
-    )
-
-    fig.add_annotation(
-        text=f"<b style='font-size:16px; color:#1F9924;'>{porcentaje:,.1f}%</b>".replace(",", "X").replace(".", ",").replace("X", "."),
-        x=0.5, y=0.3, showarrow=False, xanchor="center"
-    )
-
-    total_formateado = f"{total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    fig.add_annotation(
-        text=f"Total: {total_formateado}",
-        x=0.5, y=-0.1, showarrow=False,
-        font=dict(size=13, color="#444", family="Arial"),
-        xanchor="center"
-    )
-
-    if meta_ref and 0 < meta_ref < total:
-        theta = 180 * (meta_ref / total)
-        x0 = 0.5 - 0.35 * math.cos(math.radians(theta))
-        y0 = 0.5 + 0.35 * math.sin(math.radians(theta))
-        x1 = 0.5 - 0.42 * math.cos(math.radians(theta))
-        y1 = 0.5 + 0.42 * math.sin(math.radians(theta))
-
-        fig.add_shape(type="line", x0=x0, y0=y0, x1=x1, y1=y1, line=dict(color="red", width=3))
-        fig.add_annotation(text="Meta", x=x1, y=y1 + 0.05, showarrow=False,
-                           font=dict(size=11, color="red"), xanchor="center")
-
-    fig.update_layout(margin=dict(l=20, r=20, t=70, b=60), height=320,
-                      paper_bgcolor="#ffffff", font={"family": "Arial", "color": "#1a1a1a"})
-    return fig
-
-def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> pd.DataFrame:
+def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame) -> pd.DataFrame:
     col = sujetos_col(modulo)
-    
+
     if df_mod.empty or col not in df_mod.columns:
         return pd.DataFrame(columns=["Categoria", col.capitalize(), "Analizadas", "Meta", "Faltantes"])
-    
-    # Definir los estados efectivos según el módulo
-    if modulo.lower() == "analistas":
-        estados_efectivos = {"auditada", "aprobada", "calificada"}
-    elif modulo.lower() == "supervisores":
-        estados_efectivos = {"auditada", "aprobada"}
-    elif modulo.lower() == "equipos":
-        estados_efectivos = {"auditada"}
-    else:
-        estados_efectivos = set()
 
-    # Limpiar y filtrar datos
+    # Estados válidos según módulo
+    estados_efectivos = set(estados_validos(modulo))
+
+    # Fecha de referencia
+    tz = timezone("America/Bogota")
+    hoy = datetime.now(tz).date()
+    fecha_ref = hoy - timedelta(days=1)
+
+    # Limpiar y filtrar
     df_mod = df_mod.dropna(subset=["estado_carpeta", col])
     df_mod["estado_carpeta"] = df_mod["estado_carpeta"].str.strip().str.lower()
 
-    # Crear tabla dinámica
+    # Agrupar estados por persona
     pivot = (
         df_mod
         .groupby([col, "estado_carpeta"])
@@ -337,34 +388,48 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, per_subject_meta: int) -> p
         .reset_index()
     )
 
-    # Asegurar que existan todas las columnas de estado
+    # Asegurar columnas de estado
     for estado in ESTADOS_ORDEN:
         if estado not in pivot.columns:
             pivot[estado] = 0
 
-    # Calcular analizadas, meta y faltantes
+    # Analizadas (solo válidas)
     pivot["Analizadas"] = pivot[[e for e in ESTADOS_ORDEN if e in estados_efectivos]].sum(axis=1)
-    pivot["Meta"] = per_subject_meta
-    pivot["Faltantes"] = pivot["Meta"] - pivot["Analizadas"]
 
-    # Clasificar categoría
+    # =========================
+    #  Cargar metas por sujeto
+    # =========================
+    archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
+    metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_ref]
+
+    if "USUARIO" not in metas_dia.columns:
+        pivot["Meta"] = 0
+    else:
+        metas_sujeto = (
+            metas_dia.groupby("USUARIO")["META DIARIA A LA FECHA"]
+            .sum()
+            .reset_index()
+            .rename(columns={"USUARIO": col, "META DIARIA A LA FECHA": "Meta"})
+        )
+        pivot = pivot.merge(metas_sujeto, on=col, how="left")
+        pivot["Meta"] = pivot["Meta"].fillna(0).astype(int)
+
+    pivot["Faltantes"] = pivot["Meta"] - pivot["Analizadas"]
     pivot["Categoria"] = pivot["Faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
 
     columnas_estado = ESTADOS_ORDEN
     out = pivot[[col] + columnas_estado + ["Analizadas", "Meta", "Faltantes", "Categoria"]]
 
-    # Ordenar categorías
     categorias = ["Al día", "Atraso normal", "Atraso medio", "Atraso alto"]
     out["Categoria"] = pd.Categorical(out["Categoria"], categories=categorias, ordered=True)
 
-    # Ordenar y renombrar
     out = out.sort_values(["Categoria", col], ascending=[True, True])
     out = out.rename(columns={col: col.capitalize(), **{e: ESTADOS_RENOM.get(e, e) for e in columnas_estado}})
 
     return out
 
+
 def grafico_estado_supervisor(df: pd.DataFrame):
-    # Mapear supervisor por equipo
     sup_info = (
         df[["EQUIPO_NUM", "supervisor"]]
         .drop_duplicates()
@@ -373,7 +438,6 @@ def grafico_estado_supervisor(df: pd.DataFrame):
         .to_dict()
     )
 
-    # Preparar datos
     df["supervisor"] = df["EQUIPO_NUM"].map(sup_info)
     df["estado_label"] = df["estado_carpeta"].map(ESTADOS_RENOM)
     df["estado_label"] = pd.Categorical(
@@ -382,17 +446,14 @@ def grafico_estado_supervisor(df: pd.DataFrame):
         ordered=True
     )
 
-    # Agrupar
     grp = (
         df.groupby(["EQUIPO_NUM", "estado_label", "supervisor"])
         .size()
         .reset_index(name="cantidad")
     )
 
-    # Crear figura
     fig = go.Figure()
 
-    # Crear una traza por cada estado (esto asegura tooltips correctos)
     for estado in [ESTADOS_RENOM[e] for e in ESTADOS_ORDEN]:
         subset = grp[grp["estado_label"] == estado]
         fig.add_trace(
@@ -412,7 +473,6 @@ def grafico_estado_supervisor(df: pd.DataFrame):
             )
         )
 
-    # Layout
     fig.update_layout(
         barmode="stack",
         title="<b>Estados por EQUIPO — Vista: Supervisor</b>",
@@ -430,8 +490,8 @@ def grafico_estado_supervisor(df: pd.DataFrame):
 
     return fig
 
+
 def grafico_estado_analistas(df: pd.DataFrame):
-    # Asignar roles por equipo: A1, A2...
     analistas_unicos = (
         df[["EQUIPO_NUM", "analista"]]
         .drop_duplicates()
@@ -442,18 +502,14 @@ def grafico_estado_analistas(df: pd.DataFrame):
 
     df = df.merge(analistas_unicos, on=["EQUIPO_NUM", "analista"], how="left")
     df["equipo_rol"] = df["EQUIPO_NUM"].astype(str) + " " + df["rol"]
-
-    # Homologar estado
     df["estado_homol"] = df["estado_carpeta"].str.lower().map(ESTADOS_RENOM).fillna("Otro")
 
-    # Agrupar
     grouped = (
         df.groupby(["EQUIPO_NUM", "analista", "equipo_rol", "estado_homol"])
         .size()
         .reset_index(name="cantidad")
     )
 
-    # Pivot para tener estados como columnas
     pivot = grouped.pivot_table(
         index=["EQUIPO_NUM", "analista", "equipo_rol"],
         columns="estado_homol",
@@ -463,7 +519,6 @@ def grafico_estado_analistas(df: pd.DataFrame):
 
     estado_cols = [col for col in pivot.columns if col not in ["EQUIPO_NUM", "analista", "equipo_rol"]]
 
-    # Crear gráfico
     fig = go.Figure()
 
     for estado in estado_cols:
@@ -481,7 +536,6 @@ def grafico_estado_analistas(df: pd.DataFrame):
             )
         )
 
-    # Layout
     fig.update_layout(
         barmode="stack",
         title="<b>Estados por EQUIPO — Vista: Analistas</b>",
@@ -493,7 +547,7 @@ def grafico_estado_analistas(df: pd.DataFrame):
         legend_title_text="Estado",
         height=500,
         margin=dict(l=30, r=30, t=60, b=70),
-        bargap=0.4,  # barras más delgadas
+        bargap=0.4,
         colorway=COLOR_PALETTE,
         xaxis=dict(
             tickmode="array",
@@ -504,61 +558,129 @@ def grafico_estado_analistas(df: pd.DataFrame):
 
     return fig
 
-# ---------- utilidades de categorías globales (para filtro transversal) ----------
-def categorias_por_sujeto(df_base: pd.DataFrame, modulo: str, dias_habiles: int) -> pd.DataFrame:
-    """Devuelve DataFrame con columnas: sujeto (analista/supervisor/auditor), Categoria y además EQUIPO para posible cruce."""
+# ---------- UTILIDADES de categorías globales (con metas reales) ----------
+
+def categorias_por_sujeto(df_base: pd.DataFrame, archivo_metas: pd.DataFrame, modulo: str) -> pd.DataFrame:
+    """
+    Retorna DataFrame con:
+    - Sujeto (analista / supervisor / auditor)
+    - Categoria ("Al día", "Atraso normal", etc)
+    - EQUIPO
+    - Modulo (Analistas, Supervisores, Equipos)
+
+    Basado en metas reales desde archivo_metas.
+    """
+
     dfm = prepara_df_modulo(df_base, modulo)
-    per_subject = 34 if modulo == "Supervisores" else 17
-    per_subject_meta = per_subject * dias_habiles
-    tab = tabla_resumen(dfm, modulo, per_subject_meta)
+    col_sujeto = sujetos_col(modulo)
 
-    sujeto_col_cap = sujetos_col(modulo).capitalize()
+    if col_sujeto not in dfm.columns:
+        return pd.DataFrame(columns=["Sujeto", "Categoria", "EQUIPO", "Modulo"])
 
-    # Mapear equipo desde df_base
-    equipo_map = (
-        df_base[[sujetos_col(modulo), "EQUIPO"]]
-        .drop_duplicates()
-        .rename(columns={sujetos_col(modulo): sujeto_col_cap})
+    # Revisadas por sujeto (estados válidos según módulo)
+    estados = estados_validos(modulo)
+    revisadas = (
+        dfm[dfm["estado_carpeta"].str.lower().isin(estados)]
+        .groupby(col_sujeto)
+        .size()
+        .reset_index(name="revisadas")
     )
 
-    tab = tab.merge(equipo_map, on=sujeto_col_cap, how="left")
-    tab["Modulo"] = modulo
+    # ============================
+    #  Metas reales por sujeto
+    # ============================
+    # Se toma la meta acumulada a la fecha más reciente disponible
+    archivo_metas = archivo_metas.copy()
+    archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
 
-    return tab[[sujeto_col_cap, "Categoria", "EQUIPO", "Modulo"]].rename(columns={sujeto_col_cap: "Sujeto"})
+    # Fecha referencia = ayer
+    tz = timezone("America/Bogota")
+    hoy = datetime.now(tz).date()
+    fecha_ref = hoy - timedelta(days=1)
+
+    metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_ref]
+
+    if "USUARIO" not in metas_dia.columns:
+        # Si no hay metas por usuario, devolvemos vacío pero consistente
+        return pd.DataFrame(columns=["Sujeto", "Categoria", "EQUIPO", "Modulo"])
+
+    metas_sujeto = (
+        metas_dia.groupby("USUARIO")["META DIARIA A LA FECHA"]
+        .sum()
+        .reset_index()
+        .rename(columns={"USUARIO": col_sujeto, "META DIARIA A LA FECHA": "meta_sujeto"})
+    )
+
+    # Unir revisadas con metas reales
+    resumen = pd.merge(revisadas, metas_sujeto, on=col_sujeto, how="left").fillna(0)
+
+    # Faltantes y categoría real
+    resumen["faltantes"] = resumen["meta_sujeto"] - resumen["revisadas"]
+    resumen["Categoria"] = resumen["faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
+
+    # Agregar EQUIPO del usuario
+    equipo_map = (
+        df_base[[col_sujeto, "EQUIPO"]]
+        .drop_duplicates()
+    )
+    resumen = resumen.merge(equipo_map, on=col_sujeto, how="left")
+
+    resumen["Modulo"] = modulo
+    resumen = resumen.rename(columns={col_sujeto: "Sujeto"})
+
+    return resumen[["Sujeto", "Categoria", "EQUIPO", "Modulo"]]
 
 def aplicar_filtro_categoria_transversal(df_in: pd.DataFrame, categoria_sel: str,
                                          cat_analistas: pd.DataFrame,
                                          cat_supervisores: pd.DataFrame,
                                          cat_equipos: pd.DataFrame) -> pd.DataFrame:
-    """Filtra filas cuyo analista/supervisor/auditor caiga en la categoría seleccionada."""
+
     if categoria_sel in (None, "", "Todos"):
         return df_in
 
-    # Join de categorías a nivel de fila
     out = df_in.copy()
+
     if "analista" in out.columns and not cat_analistas.empty:
-        out = out.merge(cat_analistas[["Sujeto", "Categoria"]].rename(columns={"Sujeto": "analista", "Categoria": "cat_analista"}),
-                        on="analista", how="left")
+        out = out.merge(
+            cat_analistas[["Sujeto", "Categoria"]].rename(columns={"Sujeto": "analista", "Categoria": "cat_analista"}),
+            on="analista", how="left"
+        )
     if "supervisor" in out.columns and not cat_supervisores.empty:
-        out = out.merge(cat_supervisores[["Sujeto", "Categoria"]].rename(columns={"Sujeto": "supervisor", "Categoria": "cat_supervisor"}),
-                        on="supervisor", how="left")
+        out = out.merge(
+            cat_supervisores[["Sujeto", "Categoria"]].rename(columns={"Sujeto": "supervisor", "Categoria": "cat_supervisor"}),
+            on="supervisor", how="left"
+        )
     if "auditor" in out.columns and not cat_equipos.empty:
-        out = out.merge(cat_equipos[["Sujeto", "Categoria"]].rename(columns={"Sujeto": "auditor", "Categoria": "cat_auditor"}),
-                        on="auditor", how="left")
+        out = out.merge(
+            cat_equipos[["Sujeto", "Categoria"]].rename(columns={"Sujeto": "auditor", "Categoria": "cat_auditor"}),
+            on="auditor", how="left"
+        )
 
-    # categoría global fila = primero no-nulo
-    out["categoria_global"] = out["cat_analista"].fillna(out["cat_supervisor"]).fillna(out["cat_auditor"])
-    out = out[out["categoria_global"] == categoria_sel].copy()
-    return out
+    out["categoria_global"] = (
+        out["cat_analista"]
+        .fillna(out.get("cat_supervisor"))
+        .fillna(out.get("cat_auditor"))
+    )
 
-# ============ NAVEGACION ============
-if "pagina" not in st.session_state:
-    st.session_state.pagina = st.query_params.get("pagina", "Inicio")
+    return out[out["categoria_global"] == categoria_sel].copy()
 
-secciones = ["Inicio", "Resumen", "Analistas", "Supervisores", "Equipos"]
-pagina_actual = st.session_state.pagina
-seleccion = st.sidebar.radio("Ir a la sección:", secciones, index=secciones.index(pagina_actual), key="nav_radio")
-if seleccion != pagina_actual:
+
+# ============ NAVEGACIÓN ============
+
+SECCIONES_DISPONIBLES = ["Inicio", "Resumen", "Analistas", "Supervisores", "Equipos"]
+
+pagina_param = st.query_params.get("pagina", "Inicio")
+pagina_actual = pagina_param if pagina_param in SECCIONES_DISPONIBLES else "Inicio"
+st.session_state.pagina = st.session_state.get("pagina", pagina_actual)
+
+seleccion = st.sidebar.radio(
+    "Ir a la sección:",
+    SECCIONES_DISPONIBLES,
+    index=SECCIONES_DISPONIBLES.index(st.session_state.pagina),
+    key="nav_radio"
+)
+
+if seleccion != st.session_state.pagina:
     st.session_state.pagina = seleccion
     st.query_params["pagina"] = seleccion
     st.rerun()
@@ -567,17 +689,17 @@ if seleccion != pagina_actual:
 with st.sidebar:
     st.header("🔎 Filtros")
 
-    # Botón para recargar datos desde Google Sheets (limpia la caché)
+    # 🔄 Botón para recargar datos desde Google Sheets (limpia la caché)
     if st.button("🔄 Recargar datos", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
-    
+
     # Inicializar estados si no existen
     for k in ["sel_prof", "sel_sup", "sel_ana", "sel_estado", "sel_nivel", "sel_categoria"]:
         if k not in st.session_state:
             st.session_state[k] = "Todos"
 
-    # Botón para limpiar filtros sin cambiar de página
+    # 🧹 Botón para limpiar filtros sin cambiar de página
     if st.button("🧹 Borrar filtros", use_container_width=True):
         for k in ["sel_prof", "sel_sup", "sel_ana", "sel_estado", "sel_nivel", "sel_categoria"]:
             st.session_state[k] = "Todos"
@@ -592,47 +714,36 @@ with st.sidebar:
     if st.session_state.sel_ana != "Todos":
         df_temp = df_temp[df_temp["analista"] == st.session_state.sel_ana]
 
-    # Generar opciones válidas con base en filtro actual
+    # Opciones para selectboxes según datos filtrados
     opciones_prof = ["Todos"] + sorted(df_temp["auditor"].dropna().unique())
     opciones_sup = ["Todos"] + sorted(df_temp["supervisor"].dropna().unique())
     opciones_ana = ["Todos"] + sorted(df_temp["analista"].dropna().unique())
     opciones_estado = ["Todos"] + sorted(set(df["estado_carpeta"].str.lower().dropna().unique()) | {""})
     opciones_nivel = ["Todos"] + sorted(df_temp["nivel"].dropna().unique()) if "nivel" in df_temp.columns else ["Todos"]
 
-    # Mostrar selectboxes
+    # Mostrar filtros
     st.selectbox("👩‍💼 Profesional", opciones_prof,
                  index=opciones_prof.index(st.session_state.sel_prof) if st.session_state.sel_prof in opciones_prof else 0,
                  key="sel_prof")
-
     st.selectbox("🕵️‍♀️ Supervisor", opciones_sup,
                  index=opciones_sup.index(st.session_state.sel_sup) if st.session_state.sel_sup in opciones_sup else 0,
                  key="sel_sup")
-
     st.selectbox("👨‍💻 Analista", opciones_ana,
                  index=opciones_ana.index(st.session_state.sel_ana) if st.session_state.sel_ana in opciones_ana else 0,
                  key="sel_ana")
-
     st.selectbox("📤 Estado", opciones_estado,
                  index=opciones_estado.index(st.session_state.sel_estado) if st.session_state.sel_estado in opciones_estado else 0,
                  key="sel_estado")
-
     st.selectbox("🔹 Nivel", opciones_nivel,
                  index=opciones_nivel.index(st.session_state.sel_nivel) if st.session_state.sel_nivel in opciones_nivel else 0,
                  key="sel_nivel")
 
-    # 🔄 Filtro de Categoría dependiente del resto
-    df_filtro_prev = df.copy()
-    if st.session_state.sel_prof != "Todos":
-        df_filtro_prev = df_filtro_prev[df_filtro_prev["auditor"] == st.session_state.sel_prof]
-    if st.session_state.sel_sup != "Todos":
-        df_filtro_prev = df_filtro_prev[df_filtro_prev["supervisor"] == st.session_state.sel_sup]
-    if st.session_state.sel_ana != "Todos":
-        df_filtro_prev = df_filtro_prev[df_filtro_prev["analista"] == st.session_state.sel_ana]
+    # 🔄 Categoría de desempeño individual (con metas reales)
+    df_filtro_prev = df_temp.copy()  # ya contiene filtros previos
 
-    dias_habiles_categoria = business_days_since_start(date.today() - timedelta(days=1))
-    cat_ana_sub = categorias_por_sujeto(df_filtro_prev, "Analistas", dias_habiles_categoria)
-    cat_sup_sub = categorias_por_sujeto(df_filtro_prev, "Supervisores", dias_habiles_categoria)
-    cat_equ_sub = categorias_por_sujeto(df_filtro_prev, "Equipos", dias_habiles_categoria)
+    cat_ana_sub = categorias_por_sujeto(df_filtro_prev, archivo_metas, "Analistas")
+    cat_sup_sub = categorias_por_sujeto(df_filtro_prev, archivo_metas, "Supervisores")
+    cat_equ_sub = categorias_por_sujeto(df_filtro_prev, archivo_metas, "Equipos")
 
     categorias_disponibles = pd.concat([
         cat_ana_sub["Categoria"],
@@ -647,13 +758,12 @@ with st.sidebar:
                  index=opciones_categoria.index(st.session_state.sel_categoria) if st.session_state.sel_categoria in opciones_categoria else 0,
                  key="sel_categoria")
 
-# ========= Preparar categorías por sujeto (para filtro transversal) =========
-dias_habiles_ref = business_days_since_start(date.today() - timedelta(days=1))
-cat_analistas_df = categorias_por_sujeto(df, "Analistas", dias_habiles_ref)
-cat_supervisores_df = categorias_por_sujeto(df, "Supervisores", dias_habiles_ref)
-cat_equipos_df = categorias_por_sujeto(df, "Equipos", dias_habiles_ref)
+# ========= Preparar categorías por sujeto (para filtro transversal global) =========
+cat_analistas_df = categorias_por_sujeto(df, archivo_metas, "Analistas")
+cat_supervisores_df = categorias_por_sujeto(df, archivo_metas, "Supervisores")
+cat_equipos_df = categorias_por_sujeto(df, archivo_metas, "Equipos")
 
-# ========= Aplicar filtros al DataFrame =========
+# ========= Aplicar filtros al DataFrame principal =========
 df_filtrado = df.copy()
 
 if st.session_state.sel_prof != "Todos":
@@ -667,7 +777,7 @@ if st.session_state.sel_estado != "Todos":
 if st.session_state.sel_nivel != "Todos":
     df_filtrado = df_filtrado[df_filtrado["nivel"] == st.session_state.sel_nivel]
 
-# Aplicar filtro por Categoría (transversal)
+# ➕ Filtro por categoría (transversal)
 df_filtrado = aplicar_filtro_categoria_transversal(
     df_filtrado,
     st.session_state.sel_categoria,
@@ -679,6 +789,7 @@ df_filtrado = aplicar_filtro_categoria_transversal(
 # ============ INICIO ============
 if st.session_state.pagina == "Inicio":
     c1, c2, c3 = st.columns([1, 1, 1])
+
     with c1:
         st.image("assets/Logp GP FUAA.png", use_container_width=True)
     with c2:
@@ -686,36 +797,48 @@ if st.session_state.pagina == "Inicio":
     with c3:
         st.image("assets/Andina.png", width=200)
 
-    st.markdown("<h1 style='text-align:center; font-weight:700; color:#1F9924'>Seguimiento de Metas VA DIAN 2667</h1>", unsafe_allow_html=True)
+    st.markdown(
+        "<h1 style='text-align:center; font-weight:700; color:#1F9924'>"
+        "Seguimiento de Metas VA DIAN 2667"
+        "</h1>", unsafe_allow_html=True
+    )
+
+    st.markdown("---")
 
     col_left, col_center, col_right = st.columns([1, 1, 1])
+
     with col_left:
-        st.write("")
-        if st.button("Resumen", key="btn_home_resumen"):
-            st.session_state.pagina = "Resumen"
-            st.query_params["pagina"] = "Resumen"
-            st.rerun()
-        if st.button("Analistas", key="btn_home_analistas"):
-            st.session_state.pagina = "Analistas"
-            st.query_params["pagina"] = "Analistas"
-            st.rerun()
-        if st.button("Supervisores", key="btn_home_supervisores"):
-            st.session_state.pagina = "Supervisores"
-            st.query_params["pagina"] = "Supervisores"
-            st.rerun()
-        if st.button("Equipos", key="btn_home_equipos"):
-            st.session_state.pagina = "Equipos"
-            st.query_params["pagina"] = "Equipos"
-            st.rerun()
+        st.write("")  # Espacio
+        # Mapeo de botones a secciones
+        botones = {
+            "Resumen": "Resumen",
+            "Analistas": "Analistas",
+            "Supervisores": "Supervisores",
+            "Equipos": "Equipos"
+        }
+
+        for label, pagina in botones.items():
+            if st.button(label, key=f"btn_home_{pagina.lower()}"):
+                st.session_state.pagina = pagina
+                st.query_params["pagina"] = pagina
+                st.rerun()
+
     with col_center:
         st.image("assets/Logo Tablero.jpg", use_container_width=True)
+
+    with col_right:
+        st.empty()
 
 # ============ RESUMEN ============
 if st.session_state.pagina == "Resumen":
     st.markdown(f"<h1 style='color:#1F9924;'>Resumen general</h1>", unsafe_allow_html=True)
-    dias_habiles = business_days_since_start(date.today() - timedelta(days=1))
-    st.info(f"Días hábiles considerados: **{dias_habiles}** - Fecha de corte: **{date.today() - timedelta(days=1)}**")
 
+    # Fecha de corte = ayer
+    tz = timezone("America/Bogota")
+    fecha_corte = datetime.now(tz).date() - timedelta(days=1)
+    st.info(f"Fecha de corte: **{fecha_corte}**")
+
+    # Métricas clave
     por_asignar = df_filtrado["estado_carpeta"].fillna("").eq("").sum()
     equipo_va = df_filtrado["analista"].nunique() + df_filtrado["supervisor"].nunique()
 
@@ -725,14 +848,23 @@ if st.session_state.pagina == "Resumen":
     col3.metric("👨‍👧‍👧 Equipo VA", f"{equipo_va:,}".replace(",", "."))
     col4.metric("📌 Por asignar", f"{por_asignar:,}".replace(",", "."))
 
+    # =======================
+    # 📊 Indicador de avance
+    # =======================
     avance = df_filtrado["estado_carpeta"].str.lower().isin(["auditada"]).sum()
     total = len(df_filtrado)
-    dfm = prepara_df_modulo(df_filtrado, "Supervisores")
-    meta_total, n_sujetos = meta_acumulada("Supervisores", dfm)
+
+    # 📈 Meta global real desde archivo de metas
+    metas_corte = archivo_metas[archivo_metas["FECHA"] == fecha_corte]
+    meta_total = metas_corte["META EQUIPO A LA FECHA"].sum()
+
     fig_gauge = grafico_avance_total(total, avance, meta_total)
     st.plotly_chart(fig_gauge, use_container_width=True)
 
-    fig_estado = grafico_estado_con_meta(df_filtrado, "Resumen", meta_total)
+    # ================================
+    # 📊 Gráfico por estado + meta
+    # ================================
+    fig_estado = grafico_estado_con_meta(df_filtrado, "Supervisores", meta_total)
     st.plotly_chart(fig_estado, use_container_width=True)
 
 # ============ VISTA MÓDULOS ============
@@ -740,53 +872,64 @@ def modulo_vista(nombre_modulo: str):
     st.markdown(f"<h1 style='color:#1F9924;'>{nombre_modulo}</h1>", unsafe_allow_html=True)
     dfm = prepara_df_modulo(df_filtrado, nombre_modulo)
 
-    dias_habiles = business_days_since_start(date.today() - timedelta(days=1))
-    meta_total, n_sujetos = meta_acumulada(nombre_modulo, dfm)
-    st.info(f"Equipo: **{n_sujetos:,}** - Días hábiles considerados: **{dias_habiles}** - Fecha de corte: **{date.today() - timedelta(days=1)}**".replace(",", "."))
+    tz = timezone("America/Bogota")
+    fecha_corte = datetime.now(tz).date() - timedelta(days=1)
+    st.info(f"Fecha de corte: **{fecha_corte}**")
 
+    # --- Filtrar metas por fecha y clas ---
+    rol = "Auditoria" if nombre_modulo == "Equipos" else nombre_modulo[:-1]  # ej. Analistas → Analista
+    metas_corte = archivo_metas[archivo_metas["FECHA"] == fecha_corte]
+    metas_modulo = metas_corte[metas_corte["CLAS"] == rol]
+
+    meta_total = metas_modulo["META EQUIPO A LA FECHA"].sum()
+    n_sujetos = metas_modulo["USUARIO"].nunique()
+    per_subject_meta = (
+        metas_modulo.groupby("USUARIO")["META EQUIPO A LA FECHA"].sum().mean()
+        if not metas_modulo.empty else 0
+    )
+
+    # Carpeta desarrolladas válidas
     validos = estados_validos(nombre_modulo)
-    desarrolladas_total = (
-        dfm["estado_carpeta"].str.lower().isin(validos)
-    ).sum() if "estado_carpeta" in dfm.columns else 0
+    desarrolladas_total = dfm["estado_carpeta"].str.lower().isin(validos).sum() if "estado_carpeta" in dfm.columns else 0
     diferencia_total = desarrolladas_total - meta_total
 
+    # ====================== MÉTRICAS ======================
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("📂 Total carpetas", f"{len(dfm):,}".replace(",", "."))
     c2.metric("✔️ Desarrolladas", f"{desarrolladas_total:,}".replace(",", "."))
     c3.metric("🎯 Meta a la fecha", f"{meta_total:,}".replace(",", "."))
     c4.metric("⚠️ Diferencia", f"{diferencia_total:,}".replace(",", "."))
 
-    dias_habiles_loc = dias_habiles
-    per_subject = 34 if nombre_modulo == "Supervisores" else 17
-    meta_individual = per_subject * dias_habiles_loc
-   
-    # ---------- Cabecera de métricas de contexto ----------
+    # ===================== CONTEXTO FILTRADO =====================
     analistas_filtrados = sorted(df_filtrado["analista"].dropna().unique()) if "analista" in df_filtrado.columns else []
     supervisores_filtrados = sorted(df_filtrado["supervisor"].dropna().unique()) if "supervisor" in df_filtrado.columns else []
     auditores_filtrados = sorted(df_filtrado["auditor"].dropna().unique()) if "auditor" in df_filtrado.columns else []
     equipos_filtrados = sorted(df_filtrado["EQUIPO"].dropna().unique()) if "EQUIPO" in df_filtrado.columns else []
 
-    if len(analistas_filtrados) == 0:
-        analista_label_1 = "No disponible"; analista_label_2 = "No disponible"
-    elif len(analistas_filtrados) == 1:
-        analista_label_1 = analistas_filtrados[0]; analista_label_2 = ""
-    elif len(analistas_filtrados) == 2:
-        analista_label_1 = analistas_filtrados[0]; analista_label_2 = analistas_filtrados[1]
-    else:
-        analista_label_1 = "Varios"; analista_label_2 = "Varios"
-    
-    if len(supervisores_filtrados) == 1: supervisor_label = supervisores_filtrados[0]
-    elif len(supervisores_filtrados) > 1: supervisor_label = "Varios"
-    else: supervisor_label = "No disponible"
+    analista_label_1, analista_label_2 = ("No disponible", "") if not analistas_filtrados else (
+        (analistas_filtrados[0], "") if len(analistas_filtrados) == 1 else
+        (analistas_filtrados[0], analistas_filtrados[1]) if len(analistas_filtrados) == 2 else
+        ("Varios", "Varios")
+    )
 
-    if len(auditores_filtrados) == 1: auditor_label = auditores_filtrados[0]
-    elif len(auditores_filtrados) > 1: auditor_label = "Varios"
-    else: auditor_label = "No disponible"
+    supervisor_label = (
+        "No disponible" if not supervisores_filtrados else
+        supervisores_filtrados[0] if len(supervisores_filtrados) == 1 else
+        "Varios"
+    )
 
-    if len(equipos_filtrados) == 1: equipo_label = equipos_filtrados[0]
-    elif len(equipos_filtrados) > 1: equipo_label = "Varios"
-    else: equipo_label = "No disponible"
-    
+    auditor_label = (
+        "No disponible" if not auditores_filtrados else
+        auditores_filtrados[0] if len(auditores_filtrados) == 1 else
+        "Varios"
+    )
+
+    equipo_label = (
+        "No disponible" if not equipos_filtrados else
+        equipos_filtrados[0] if len(equipos_filtrados) == 1 else
+        "Varios"
+    )
+
     def custom_metric(label: str, value: str, color="#2e7d32"):
         st.markdown(
             f"""
@@ -805,15 +948,15 @@ def modulo_vista(nombre_modulo: str):
             """,
             unsafe_allow_html=True
         )
-    
-    # ---------- Contenido por módulo ----------
+
+    # ==================== GRAFICOS MODULARES ====================
     if nombre_modulo != "Equipos":
         col_fig1, col_fig2 = st.columns(2)
         with col_fig1:
             fig1 = grafico_estado_con_meta(dfm, nombre_modulo, meta_total)
             st.plotly_chart(fig1, use_container_width=True)
         with col_fig2:
-            fig2 = grafico_categorias_barh(dfm, nombre_modulo, meta_individual)
+            fig2 = grafico_categorias_barh(dfm, nombre_modulo, per_subject_meta)
             st.plotly_chart(fig2, use_container_width=True)
 
         with st.container():
@@ -822,21 +965,14 @@ def modulo_vista(nombre_modulo: str):
                 with cx1: custom_metric("💯 Equipo", equipo_label)
                 with cx2: custom_metric("🕵️‍♀️ Supervisor", supervisor_label)
                 with cx3: custom_metric("👩‍💼 Profesional", auditor_label)
-        
             elif nombre_modulo == 'Supervisores':
                 cx1, cx2, cx3, cx4 = st.columns(4)
                 with cx1: custom_metric("💯 Equipo", equipo_label) 
                 with cx2: custom_metric("👨‍💻 Analista1", analista_label_1)
                 with cx3: custom_metric("👨‍💻 Analista2", analista_label_2)
-                with cx4: custom_metric("👩‍💼 Profesional", auditor_label)                    
-            else:
-                cx1, cx2, cx3, cx4 = st.columns(4)
-                with cx1: custom_metric("💯 Equipo", equipo_label) 
-                with cx2: custom_metric("👨‍💻 Analista1", analista_label_1)
-                with cx3: custom_metric("👨‍💻 Analista2", analista_label_2)
-                with cx4: custom_metric("🕵️‍♀️ Supervisor", supervisor_label)
-        
-        tabla = tabla_resumen(dfm, nombre_modulo, meta_individual)
+                with cx4: custom_metric("👩‍💼 Profesional", auditor_label)
+
+        tabla = tabla_resumen(dfm, nombre_modulo, per_subject_meta)
         st.markdown(f"<h3 style='color:#1F9924; font-weight:600; margin-top: 1em;'>Resumen {nombre_modulo}</h3>", unsafe_allow_html=True)
         st.dataframe(tabla, use_container_width=True)
         return
@@ -974,9 +1110,11 @@ def modulo_vista(nombre_modulo: str):
     st.dataframe(tabla, use_container_width=True)
 
 # ============ ENRUTAMIENTO ============
-if st.session_state.pagina == "Analistas":
-    modulo_vista("Analistas")
-elif st.session_state.pagina == "Supervisores":
-    modulo_vista("Supervisores")
-elif st.session_state.pagina == "Equipos":
-    modulo_vista("Equipos")
+modulos_disponibles = {
+    "Analistas": lambda: modulo_vista("Analistas"),
+    "Supervisores": lambda: modulo_vista("Supervisores"),
+    "Equipos": lambda: modulo_vista("Equipos")
+}
+
+if st.session_state.pagina in modulos_disponibles:
+    modulos_disponibles[st.session_state.pagina]()
