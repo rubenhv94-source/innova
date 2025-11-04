@@ -481,9 +481,12 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
 
     # === LIMPIEZA NUMÉRICA ===
     if "META DIARIA A LA FECHA" in metas_dia.columns:
-        metas_dia["META DIARIA A LA FECHA"] = pd.to_numeric(
+        metas_dia["META DIARIA A LA FECHA"] = (
             metas_dia["META DIARIA A LA FECHA"]
             .astype(str)
+            .str.replace("\.", "", regex=True, where=lambda s: ~s.str.contains(","))  # borrar punto solo si NO hay coma
+            .str.replace(",", ".", regex=False)  # cambiar coma decimal a punto
+            .astype(float)
         )
 
     # === Limpieza del DF principal ===
