@@ -470,6 +470,7 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd
 def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame) -> pd.DataFrame:
     col = sujetos_col(modulo)
 
+    # Validación inicial
     if df_mod.empty or col not in df_mod.columns:
         st.warning(f"No se encontró la columna esperada '{col}' para el módulo '{modulo}'.")
         return pd.DataFrame(columns=["Categoria", col.capitalize(), "Analizadas", "Meta", "Faltantes"])
@@ -477,13 +478,23 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
     estados_efectivos = set(estados_validos(modulo))
     fecha_ref = obtener_fecha_corte_valida(archivo_metas)
 
+    # Preprocesar metas
     archivo_metas = archivo_metas.copy()
     archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
     archivo_metas["USUARIO"] = archivo_metas["USUARIO"].astype(str).str.strip().str.lower()
 
+    # Rol base para comparación
+    rol_map = {"Analistas": "análisis", "Supervisores": "supervisión", "Equipos": "auditoria"}
+    clas = rol_map.get(modulo, "").strip().lower()
+
+    # Filtrar metas por fecha
+    metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_ref].copy()
+
+    # --- Limpieza del DF principal ---
     df_mod = df_mod.dropna(subset=["estado_carpeta", col])
     df_mod["estado_carpeta"] = df_mod["estado_carpeta"].str.strip().str.lower()
 
+    # Agrupación de estados
     pivot = (
         df_mod
         .groupby([col, "estado_carpeta"])
@@ -498,33 +509,37 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
 
     pivot["Analizadas"] = pivot[[e for e in ESTADOS_ORDEN if e in estados_efectivos]].sum(axis=1)
 
-    # === META (caso general) ===
-    rol_map = {"Analistas": "Análisis", "Supervisores": "Supervisión", "Equipos": "Auditoria"}
-    clas = rol_map.get(modulo, "").strip().lower()
-    metas_dia = archivo_metas[
-        (archivo_metas["FECHA"] == fecha_ref)
-    ].copy()
-
+    # ============================
+    # META por sujeto o agregada por rol
+    # ============================
     if metas_dia.empty or "META DIARIA A LA FECHA" not in metas_dia.columns:
         st.warning(f"No hay metas disponibles para la fecha {fecha_ref}.")
         pivot["Meta"] = 0
     else:
         if modulo != "Equipos":
+            # Meta total por rol
             total_meta = metas_dia[metas_dia["USUARIO"] == clas]["META DIARIA A LA FECHA"].sum()
             pivot["Meta"] = total_meta
         else:
             # === CASO ESPECIAL: Equipos ===
-            # Para cada auditor, encontrar sus supervisores y sumar sus metas
-            df_tmp = df_mod[["auditor", "supervisor"]].dropna().drop_duplicates()
-            sup_metas = metas_dia[metas_dia["USUARIO"] == "supervisión"]
-            sup_metas = sup_metas.groupby("CLAS")["META DIARIA A LA FECHA"].sum().reset_index()
-            sup_metas.columns = ["supervisor", "meta_superv"]
+            # Obtener supervisores únicos por auditor
+            df_sup = df_mod[["auditor", "supervisor"]].dropna().drop_duplicates()
 
-            df_metas = df_tmp.merge(sup_metas, on="supervisor", how="left")
-            metas_por_auditor = df_metas.groupby("auditor")["meta_superv"].sum().reset_index()
-            metas_por_auditor.columns = [col, "Meta"]
+            # Filtrar metas solo de supervisores
+            metas_sup = metas_dia[metas_dia["USUARIO"] == "supervisión"]
+            metas_sup = metas_sup.copy()
 
-            pivot = pivot.merge(metas_por_auditor, on=col, how="left")
+            # Agrupar metas por supervisor (en columna CLAS)
+            metas_sup["CLAS"] = metas_sup["CLAS"].astype(str).str.strip()
+            metas_por_sup = metas_sup.groupby("CLAS")["META DIARIA A LA FECHA"].sum().reset_index()
+            metas_por_sup.columns = ["supervisor", "Meta"]
+
+            # Sumar metas de supervisores por auditor
+            metas_auditor = df_sup.merge(metas_por_sup, on="supervisor", how="left")
+            metas_auditor = metas_auditor.groupby("auditor")["Meta"].sum().reset_index()
+            metas_auditor.columns = [col, "Meta"]
+
+            pivot = pivot.merge(metas_auditor, on=col, how="left")
             pivot["Meta"] = pivot["Meta"].fillna(0)
 
     pivot["Faltantes"] = pivot["Meta"] - pivot["Analizadas"]
