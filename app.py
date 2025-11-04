@@ -8,6 +8,7 @@ from datetime import datetime, date, timedelta
 import math
 from pytz import timezone
 
+
 # ============ CONFIG VISUAL ============
 pio.templates.default = "seaborn"
 COLOR_PALETTE = px.colors.sequential.Greens
@@ -98,6 +99,22 @@ ESTADOS_RENOM = {
     "auditada": "Auditada"
 }
 
+def obtener_fecha_corte_valida(archivo_metas: pd.DataFrame) -> date:
+    """Devuelve la fecha de corte válida (la más reciente <= hoy) del archivo de metas"""
+    if "FECHA" not in archivo_metas.columns:
+        return date.today() - timedelta(days=1)
+
+    archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
+    fechas_validas = archivo_metas["FECHA"].dropna()
+    
+    if fechas_validas.empty:
+        return date.today() - timedelta(days=1)
+
+    fecha_max = fechas_validas.max()
+    fecha_ayer = date.today() - timedelta(days=1)
+    
+    return fecha_max if fecha_max < date.today() else fecha_ayer
+
 def limpiar_datos_por_modulo(df: pd.DataFrame, archivo_metas: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     archivo_metas = archivo_metas.copy()
@@ -108,7 +125,7 @@ def limpiar_datos_por_modulo(df: pd.DataFrame, archivo_metas: pd.DataFrame) -> p
     # === Fecha de referencia ===
     tz = timezone("America/Bogota")
     hoy = datetime.now(tz).date()
-    fecha_referencia = hoy - timedelta(days=1)
+    fecha_referencia = obtener_fecha_corte_valida(archivo_metas)
 
     # === Asegurar consistencia en FECHA ===
     archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
@@ -325,7 +342,7 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd
     # Fecha de referencia
     tz = timezone("America/Bogota")
     hoy = datetime.now(tz).date()
-    fecha_ref = hoy - timedelta(days=1)
+    fecha_ref = obtener_fecha_corte_valida(archivo_metas)
 
     # Revisadas por persona
     estados = estados_validos(modulo)
@@ -395,7 +412,7 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
     # Fecha de referencia
     tz = timezone("America/Bogota")
     hoy = datetime.now(tz).date()
-    fecha_ref = hoy - timedelta(days=1)
+    fecha_ref = obtener_fecha_corte_valida(archivo_metas)
 
     # Limpiar y filtrar datos
     df_mod = df_mod.dropna(subset=["estado_carpeta", col])
@@ -629,7 +646,7 @@ def categorias_por_sujeto(df_base: pd.DataFrame, archivo_metas: pd.DataFrame, mo
     # Fecha referencia = ayer
     tz = timezone("America/Bogota")
     hoy = datetime.now(tz).date()
-    fecha_ref = hoy - timedelta(days=1)
+    fecha_ref = obtener_fecha_corte_valida(archivo_metas)
 
     metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_ref]
 
