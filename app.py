@@ -522,7 +522,7 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
     else:
         total_meta = metas_dia["META DIARIA A LA FECHA"].sum()
         pivot["Meta"] = total_meta  # Asigna la misma meta a todos los sujetos
-        pivot["Meta"] = pivot["Meta"].astype(int)
+        pivot["Meta"] = pivot["Meta"].astype(float)
 
     # Faltantes y clasificación
     pivot["Faltantes"] = pivot["Meta"] - pivot["Analizadas"]
