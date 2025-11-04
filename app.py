@@ -481,10 +481,10 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
     ]
 
     # --- DEBUG temporal ---
-    # st.write("Rol buscado:", rol_usuario)
-    # st.write("Fecha buscada:", fecha_ref)
-    # st.write("Fechas disponibles:", archivo_metas["FECHA"].unique())
-    # st.write("Usuarios disponibles:", archivo_metas["USUARIO"].unique())
+    st.write("Rol buscado:", rol_usuario)
+    st.write("Fecha buscada:", fecha_ref)
+    st.write("Fechas disponibles:", archivo_metas["FECHA"].unique())
+    st.write("Usuarios disponibles:", archivo_metas["USUARIO"].unique())
 
     meta_total = metas_dia["META DIARIA A LA FECHA"].sum() if not metas_dia.empty else 0
 
