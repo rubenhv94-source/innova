@@ -499,7 +499,7 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
     pivot["Analizadas"] = pivot[[e for e in ESTADOS_ORDEN if e in estados_efectivos]].sum(axis=1)
 
     # === META (caso general) ===
-    rol_map = {"Analistas": "análisis", "Supervisores": "supervisión", "Equipos": "auditoria"}
+    rol_map = {"Analistas": "Análisis", "Supervisores": "Supervisión", "Equipos": "Auditoria"}
     clas = rol_map.get(modulo, "").strip().lower()
     metas_dia = archivo_metas[
         (archivo_metas["FECHA"] == fecha_ref)
