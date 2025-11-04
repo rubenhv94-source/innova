@@ -486,7 +486,7 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
             #.astype(str)
             #.str.replace(".", "", regex=False)
             #.str.replace(",", ".", regex=False)
-            .astype(float)
+            .astype(float64)
         )
 
     # === Limpieza del DF principal ===
