@@ -1105,7 +1105,7 @@ def modulo_vista(nombre_modulo: str):
         st.plotly_chart(fig_ana, use_container_width=True)
 
     # Tabla resumen a nivel de "Equipos": usamos auditor como sujeto base
-    tabla = tabla_resumen(dfm, "Equipos", 34 * dias_habiles_loc)
+    ttabla = tabla_resumen(dfm, "Equipos", archivo_metas)
     st.markdown(f"<h3 style='color:#1F9924; font-weight:600; margin-top: 1em;'>Resumen {nombre_modulo}</h3>", unsafe_allow_html=True)
     st.dataframe(tabla, use_container_width=True)
 
