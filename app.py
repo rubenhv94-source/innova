@@ -227,15 +227,8 @@ def grafico_avance_total(total: int, avance: int, meta: int):
     fig.update_layout(height=300, margin=dict(t=40, b=20, l=20, r=20))
     return fig
 
-def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, df_resumen_vrm: pd.DataFrame):
-    rol_map = {"Analistas": "Análisis", "Supervisores": "Supervisión", "Equipos": "Auditoria"}
-    rol = rol_map.get(modulo, None)
-    
-    total_meta = 0
-    if rol and not df_resumen_vrm.empty:
-        meta_row = df_resumen_vrm[df_resumen_vrm["ROL"] == rol]
-        if not meta_row.empty:
-            total_meta = int(meta_row["Meta Proyectada a la Fecha"].values[0])
+def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, meta_total: int = 0):
+    total_meta = meta_total
 
     conteo = (
         df_mod["estado_carpeta"]
