@@ -901,7 +901,7 @@ def modulo_vista(nombre_modulo: str):
 
     meta_total = metas_modulo["META EQUIPO A LA FECHA"].sum()
     n_sujetos = metas_modulo["USUARIO"].nunique()
-    archivo_metas = (
+    per_subject_meta = (
         metas_modulo.groupby("USUARIO")["META EQUIPO A LA FECHA"].sum().mean()
         if not metas_modulo.empty else 0
     )
