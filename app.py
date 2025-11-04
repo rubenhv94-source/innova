@@ -481,14 +481,6 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
     archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
     archivo_metas["USUARIO"] = archivo_metas["USUARIO"].astype(str).str.strip().str.lower()
 
-    rol_map = {"Analistas": "análisis", "Supervisores": "supervisión", "Equipos": "auditoria"}
-    clas = rol_map.get(modulo, "").strip().lower()
-
-    metas_dia = archivo_metas[
-        (archivo_metas["FECHA"] == fecha_ref) &
-        (archivo_metas["USUARIO"].str.lower() == clas)
-    ].copy()
-
     df_mod = df_mod.dropna(subset=["estado_carpeta", col])
     df_mod["estado_carpeta"] = df_mod["estado_carpeta"].str.strip().str.lower()
 
@@ -506,57 +498,43 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
 
     pivot["Analizadas"] = pivot[[e for e in ESTADOS_ORDEN if e in estados_efectivos]].sum(axis=1)
 
-    # =====================
-    # Cálculo de metas
-    # =====================
+    # === META (caso general) ===
+    rol_map = {"Analistas": "análisis", "Supervisores": "supervisión", "Equipos": "auditoria"}
+    clas = rol_map.get(modulo, "").strip().lower()
+    metas_dia = archivo_metas[
+        (archivo_metas["FECHA"] == fecha_ref)
+    ].copy()
+
     if metas_dia.empty or "META DIARIA A LA FECHA" not in metas_dia.columns:
-        st.warning(f"No hay metas disponibles para '{clas}' en la fecha {fecha_ref}.")
+        st.warning(f"No hay metas disponibles para la fecha {fecha_ref}.")
         pivot["Meta"] = 0
     else:
-        total_meta = metas_dia["META DIARIA A LA FECHA"].sum()
-
-        if modulo == "Equipos":
-            # Contar cuántos supervisores tiene cada auditor
-            if "supervisor" not in df_mod.columns:
-                st.warning("No se encontró columna 'supervisor' para calcular metas por auditor.")
-                pivot["Meta"] = int(total_meta)
-            else:
-                relacion = (
-                    df_mod[["auditor", "supervisor"]]
-                    .dropna()
-                    .drop_duplicates()
-                    .groupby("auditor")["supervisor"]
-                    .nunique()
-                    .reset_index(name="n_supervisores")
-                )
-
-                total_supervisores = relacion["n_supervisores"].sum()
-                if total_supervisores == 0:
-                    st.warning("No se encontraron supervisores válidos para auditores.")
-                    pivot["Meta"] = int(total_meta)
-                else:
-                    # Meta proporcional por auditor
-                    relacion["Meta"] = (relacion["n_supervisores"] / total_supervisores * total_meta).round().astype(int)
-                    pivot = pivot.merge(relacion[["auditor", "Meta"]], left_on=col, right_on="auditor", how="left")
-                    pivot["Meta"] = pivot["Meta"].fillna(0).astype(int)
-                    pivot.drop(columns=["auditor"], inplace=True)
+        if modulo != "Equipos":
+            total_meta = metas_dia[metas_dia["USUARIO"] == clas]["META DIARIA A LA FECHA"].sum()
+            pivot["Meta"] = total_meta
         else:
-            # Para otros módulos, meta total se asigna igual
-            pivot["Meta"] = int(total_meta)
+            # === CASO ESPECIAL: Equipos ===
+            # Para cada auditor, encontrar sus supervisores y sumar sus metas
+            df_tmp = df_mod[["auditor", "supervisor"]].dropna().drop_duplicates()
+            sup_metas = metas_dia[metas_dia["USUARIO"] == "supervisión"]
+            sup_metas = sup_metas.groupby("CLAS")["META DIARIA A LA FECHA"].sum().reset_index()
+            sup_metas.columns = ["supervisor", "meta_superv"]
 
-    # =====================
-    # Faltantes y Categoría
-    # =====================
+            df_metas = df_tmp.merge(sup_metas, on="supervisor", how="left")
+            metas_por_auditor = df_metas.groupby("auditor")["meta_superv"].sum().reset_index()
+            metas_por_auditor.columns = [col, "Meta"]
+
+            pivot = pivot.merge(metas_por_auditor, on=col, how="left")
+            pivot["Meta"] = pivot["Meta"].fillna(0)
+
     pivot["Faltantes"] = pivot["Meta"] - pivot["Analizadas"]
     pivot["Categoria"] = pivot["Faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
 
-    # Orden de salida
     columnas_estado = ESTADOS_ORDEN
     out = pivot[[col] + columnas_estado + ["Analizadas", "Meta", "Faltantes", "Categoria"]]
 
     categorias = ["Al día", "Atraso normal", "Atraso medio", "Atraso alto"]
     out["Categoria"] = pd.Categorical(out["Categoria"], categories=categorias, ordered=True)
-
     out = out.sort_values(["Categoria", col], ascending=[True, True])
     out = out.rename(columns={col: col.capitalize(), **{e: ESTADOS_RENOM.get(e, e) for e in columnas_estado}})
 
