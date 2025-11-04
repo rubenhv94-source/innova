@@ -207,6 +207,24 @@ def desarrolladas_por_sujeto(df_mod: pd.DataFrame, modulo: str) -> pd.DataFrame:
 
 # ============ GRAFICOS ============
 
+def grafico_avance_total(total: int, avance: int, meta: int):
+    porcentaje = (avance / meta) * 100 if meta > 0 else 0
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=porcentaje,
+        title={"text": "<b>Avance total</b>"},
+        gauge={
+            "axis": {"range": [0, 100]},
+            "bar": {"color": "#1F9924"},
+            "steps": [
+                {"range": [0, 50], "color": "#e8f5e9"},
+                {"range": [50, 100], "color": "#c8e6c9"}
+            ]
+        }
+    ))
+    fig.update_layout(height=300, margin=dict(t=40, b=20, l=20, r=20))
+    return fig
+
 def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, df_resumen_vrm: pd.DataFrame):
     rol_map = {"Analistas": "Análisis", "Supervisores": "Supervisión", "Equipos": "Auditoria"}
     rol = rol_map.get(modulo, None)
@@ -277,7 +295,6 @@ def grafico_estado_con_meta(df_mod: pd.DataFrame, modulo: str, df_resumen_vrm: p
     )
     return fig
 
-
 def grafico_avance_por_rol(df_resumen: pd.DataFrame, rol: str):
     row = df_resumen[df_resumen["ROL"] == rol]
     if row.empty:
@@ -304,7 +321,6 @@ def grafico_avance_por_rol(df_resumen: pd.DataFrame, rol: str):
     ))
     fig.update_layout(height=320, margin=dict(t=50, b=30, l=30, r=30))
     return fig
-
 
 def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame):
     col = sujetos_col(modulo)
@@ -369,7 +385,6 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd
         margin=dict(l=20, r=20, t=60, b=40),
     )
     return fig
-
 
 def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame) -> pd.DataFrame:
     col = sujetos_col(modulo)
@@ -438,7 +453,6 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
 
     return out
 
-
 def grafico_estado_supervisor(df: pd.DataFrame):
     sup_info = (
         df[["EQUIPO_NUM", "supervisor"]]
@@ -499,7 +513,6 @@ def grafico_estado_supervisor(df: pd.DataFrame):
     )
 
     return fig
-
 
 def grafico_estado_analistas(df: pd.DataFrame):
     analistas_unicos = (
