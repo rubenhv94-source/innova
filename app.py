@@ -462,21 +462,33 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
     # Estados válidos
     estados_efectivos = set(estados_validos(modulo))
 
-    # Fecha válida y limpieza
+    # Fecha válida
     fecha_ref = obtener_fecha_corte_valida(archivo_metas)
+
+    # Normalizar archivo metas
     archivo_metas = archivo_metas.copy()
     archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
-    archivo_metas["USUARIO"] = archivo_metas["USUARIO"].astype(str).str.strip()
+    archivo_metas["USUARIO"] = archivo_metas["USUARIO"].astype(str).str.strip().str.lower()
 
-    # Determinar ROL para meta
-    rol_map = {"Analistas": "Análisis", "Supervisores": "Supervisión", "Equipos": "Auditoria"}
-    rol_usuario = rol_map.get(modulo, "")
+    # Determinar el rol como se guarda en USUARIO
+    rol_map = {"Analistas": "análisis", "Supervisores": "supervisión", "Equipos": "auditoria"}
+    rol_usuario = rol_map.get(modulo, "").strip().lower()
 
-    # Meta total por rol
-    metas_dia = archivo_metas[(archivo_metas["FECHA"] == fecha_ref) & (archivo_metas["USUARIO"] == rol_usuario)]
+    # Filtrar correctamente por USUARIO y FECHA
+    metas_dia = archivo_metas[
+        (archivo_metas["FECHA"] == fecha_ref) & 
+        (archivo_metas["USUARIO"] == rol_usuario)
+    ]
+
+    # --- DEBUG temporal ---
+    # st.write("Rol buscado:", rol_usuario)
+    # st.write("Fecha buscada:", fecha_ref)
+    # st.write("Fechas disponibles:", archivo_metas["FECHA"].unique())
+    # st.write("Usuarios disponibles:", archivo_metas["USUARIO"].unique())
+
     meta_total = metas_dia["META DIARIA A LA FECHA"].sum() if not metas_dia.empty else 0
 
-    # Limpieza y agrupación
+    # --- Limpiar DF principal ---
     df_mod = df_mod.dropna(subset=["estado_carpeta", col])
     df_mod["estado_carpeta"] = df_mod["estado_carpeta"].str.strip().str.lower()
 
@@ -499,11 +511,9 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
     meta_individual = round(meta_total / sujetos_presentes) if sujetos_presentes > 0 else 0
     pivot["Meta"] = meta_individual
 
-    # Faltantes y categorías
     pivot["Faltantes"] = pivot["Meta"] - pivot["Analizadas"]
     pivot["Categoria"] = pivot["Faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
 
-    # Salida ordenada
     columnas_estado = ESTADOS_ORDEN
     out = pivot[[col] + columnas_estado + ["Analizadas", "Meta", "Faltantes", "Categoria"]]
 
