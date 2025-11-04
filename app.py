@@ -470,18 +470,13 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd
 def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame) -> pd.DataFrame:
     col = sujetos_col(modulo)
 
-    # Validación inicial
     if df_mod.empty or col not in df_mod.columns:
         st.warning(f"No se encontró la columna esperada '{col}' para el módulo '{modulo}'.")
         return pd.DataFrame(columns=["Categoria", col.capitalize(), "Analizadas", "Meta", "Faltantes"])
 
-    # Estados válidos
     estados_efectivos = set(estados_validos(modulo))
-
-    # Fecha de corte válida
     fecha_ref = obtener_fecha_corte_valida(archivo_metas)
 
-    # Preprocesar archivo de metas
     archivo_metas = archivo_metas.copy()
     archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
     archivo_metas["USUARIO"] = archivo_metas["USUARIO"].astype(str).str.strip().str.lower()
@@ -494,11 +489,9 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
         (archivo_metas["USUARIO"].str.lower() == clas)
     ].copy()
 
-    # === Limpieza del DF principal ===
     df_mod = df_mod.dropna(subset=["estado_carpeta", col])
     df_mod["estado_carpeta"] = df_mod["estado_carpeta"].str.strip().str.lower()
 
-    # Agrupación de estados
     pivot = (
         df_mod
         .groupby([col, "estado_carpeta"])
@@ -513,22 +506,51 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
 
     pivot["Analizadas"] = pivot[[e for e in ESTADOS_ORDEN if e in estados_efectivos]].sum(axis=1)
 
-    # ============================
-    # META desde archivo de metas (agregada por módulo)
-    # ============================
+    # =====================
+    # Cálculo de metas
+    # =====================
     if metas_dia.empty or "META DIARIA A LA FECHA" not in metas_dia.columns:
         st.warning(f"No hay metas disponibles para '{clas}' en la fecha {fecha_ref}.")
         pivot["Meta"] = 0
     else:
         total_meta = metas_dia["META DIARIA A LA FECHA"].sum()
-        pivot["Meta"] = total_meta  # Asigna la misma meta a todos los sujetos
-        pivot["Meta"] = pivot["Meta"].astype(int)
 
-    # Faltantes y clasificación
+        if modulo == "Equipos":
+            # Contar cuántos supervisores tiene cada auditor
+            if "supervisor" not in df_mod.columns:
+                st.warning("No se encontró columna 'supervisor' para calcular metas por auditor.")
+                pivot["Meta"] = int(total_meta)
+            else:
+                relacion = (
+                    df_mod[["auditor", "supervisor"]]
+                    .dropna()
+                    .drop_duplicates()
+                    .groupby("auditor")["supervisor"]
+                    .nunique()
+                    .reset_index(name="n_supervisores")
+                )
+
+                total_supervisores = relacion["n_supervisores"].sum()
+                if total_supervisores == 0:
+                    st.warning("No se encontraron supervisores válidos para auditores.")
+                    pivot["Meta"] = int(total_meta)
+                else:
+                    # Meta proporcional por auditor
+                    relacion["Meta"] = (relacion["n_supervisores"] / total_supervisores * total_meta).round().astype(int)
+                    pivot = pivot.merge(relacion[["auditor", "Meta"]], left_on=col, right_on="auditor", how="left")
+                    pivot["Meta"] = pivot["Meta"].fillna(0).astype(int)
+                    pivot.drop(columns=["auditor"], inplace=True)
+        else:
+            # Para otros módulos, meta total se asigna igual
+            pivot["Meta"] = int(total_meta)
+
+    # =====================
+    # Faltantes y Categoría
+    # =====================
     pivot["Faltantes"] = pivot["Meta"] - pivot["Analizadas"]
     pivot["Categoria"] = pivot["Faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
 
-    # Orden final
+    # Orden de salida
     columnas_estado = ESTADOS_ORDEN
     out = pivot[[col] + columnas_estado + ["Analizadas", "Meta", "Faltantes", "Categoria"]]
 
