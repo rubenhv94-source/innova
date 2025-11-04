@@ -483,8 +483,8 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
     if "META DIARIA A LA FECHA" in metas_dia.columns:
         metas_dia["META DIARIA A LA FECHA"] = (
             metas_dia["META DIARIA A LA FECHA"]
-            #.astype(str)
-            #.str.replace(".", "", regex=False)
+            .astype(str)
+            .str.replace(".", ",", regex=False)
             #.str.replace(",", ".", regex=False)
             .astype(float64)
         )
