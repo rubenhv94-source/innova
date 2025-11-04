@@ -931,9 +931,9 @@ def modulo_vista(nombre_modulo: str):
     
     # Mapeo correcto de rol a CLAS del archivo
     rol_map = {
-        "Analistas": "ANALISTA",
-        "Supervisores": "SUPERVISOR",
-        "Equipos": "AUDITOR"   # En tu archivo puede ser "AUDITOR" o "AUDITORIA"
+        "Analistas": "Análisis",
+        "Supervisores": "Supervisión",
+        "Equipos": "Auditoria"   # En tu archivo puede ser "AUDITOR" o "AUDITORIA"
     }
     rol_clas = rol_map.get(nombre_modulo, "").upper()
     
