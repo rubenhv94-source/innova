@@ -484,8 +484,8 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
         metas_dia["META DIARIA A LA FECHA"] = (
             metas_dia["META DIARIA A LA FECHA"]
             .astype(str)
-            .str.replace("\.", "", regex=True, where=lambda s: ~s.str.contains(","))  # borrar punto solo si NO hay coma
-            .str.replace(",", ".", regex=False)  # cambiar coma decimal a punto
+            .apply(lambda x: x.replace(".", "") if "," not in x else x)
+            .replace(",", ".", regex=False)
             .astype(float)
         )
 
