@@ -455,32 +455,30 @@ def grafico_categorias_barh(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd
 def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame) -> pd.DataFrame:
     col = sujetos_col(modulo)
 
-    # Validación inicial
     if df_mod.empty or col not in df_mod.columns:
         st.warning(f"No se encontró la columna esperada '{col}' para el módulo '{modulo}'.")
         return pd.DataFrame(columns=["Categoria", col.capitalize(), "Analizadas", "Meta", "Faltantes"])
 
-    # Estados válidos
     estados_efectivos = set(estados_validos(modulo))
-
-    # Fecha de corte válida
     fecha_ref = obtener_fecha_corte_valida(archivo_metas)
 
-    # Preprocesar archivo de metas
     archivo_metas = archivo_metas.copy()
     archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"], errors="coerce").dt.date
     archivo_metas["USUARIO"] = archivo_metas["USUARIO"].astype(str).str.strip()
+    archivo_metas["PERSONAS"] = archivo_metas["PERSONAS"].astype(str).str.strip()
 
     rol_map = {"Analistas": "Análisis", "Supervisores": "Supervisión", "Equipos": "Auditoria"}
     clas = rol_map.get(modulo, "").strip()
 
-    metas_dia = archivo_metas[(archivo_metas["FECHA"] == fecha_ref) & (archivo_metas["USUARIO"] == clas)]
+    metas_dia = archivo_metas[
+        (archivo_metas["FECHA"] == fecha_ref) & (archivo_metas["USUARIO"] == clas)
+    ]
 
     # Limpieza del DF principal
     df_mod = df_mod.dropna(subset=["estado_carpeta", col])
     df_mod["estado_carpeta"] = df_mod["estado_carpeta"].str.strip().str.lower()
 
-    # Agrupación
+    # Agrupación por sujeto y estado
     pivot = (
         df_mod
         .groupby([col, "estado_carpeta"])
@@ -495,18 +493,11 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
 
     pivot["Analizadas"] = pivot[[e for e in ESTADOS_ORDEN if e in estados_efectivos]].sum(axis=1)
 
-    # ============================
-    # Cargar metas por sujeto
-    # ============================
+    # Cargar metas por sujeto (desde PERSONAS)
     if metas_dia.empty or "META DIARIA A LA FECHA" not in metas_dia.columns or "PERSONAS" not in metas_dia.columns:
-        st.warning(f"No hay metas individuales para {clas} en la fecha {fecha_ref}.")
+        st.warning(f"No hay metas por persona para {clas} en la fecha {fecha_ref}.")
         pivot["Meta"] = 0
     else:
-        # Asegurarse de que los nombres coincidan en formato
-        metas_dia["PERSONAS"] = metas_dia["PERSONAS"].astype(str).str.strip()
-        pivot[col] = pivot[col].astype(str).str.strip()
-    
-        # Agrupar metas por persona
         metas_sujeto = (
             metas_dia
             .groupby("PERSONAS")["META DIARIA A LA FECHA"]
@@ -514,19 +505,16 @@ def tabla_resumen(df_mod: pd.DataFrame, modulo: str, archivo_metas: pd.DataFrame
             .reset_index()
             .rename(columns={"PERSONAS": col, "META DIARIA A LA FECHA": "Meta"})
         )
-    
-        # Unir metas con pivot
+
         if col in metas_sujeto.columns:
             pivot = pivot.merge(metas_sujeto, on=col, how="left")
             pivot["Meta"] = pivot["Meta"].fillna(0).astype(int)
         else:
             pivot["Meta"] = 0
 
-    # Faltantes y clasificación
     pivot["Faltantes"] = pivot["Meta"] - pivot["Analizadas"]
     pivot["Categoria"] = pivot["Faltantes"].apply(lambda x: clasifica_categoria(int(x), modulo))
 
-    # Orden final
     columnas_estado = ESTADOS_ORDEN
     out = pivot[[col] + columnas_estado + ["Analizadas", "Meta", "Faltantes", "Categoria"]]
 
