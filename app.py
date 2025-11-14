@@ -59,7 +59,7 @@ def convertir_numero(s):
         return 0.0
 
     if "," in s:
-        s = s.replace(".", "")    # quitar separador de miles
+        s = s.replace(".", "")
     else:
         s = s.replace(".", "")
 
