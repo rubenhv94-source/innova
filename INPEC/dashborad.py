@@ -445,10 +445,10 @@ def mostrar_avance_por_rol(modulo: str, df_base: pd.DataFrame, df_metr: pd.DataF
         cols_numericas = ["Meta Proyectada a la Fecha", "Carpetas Revisadas"]
         for col in cols_numericas:
             if col in resumen.columns:
-                resumen[col] = resumen[col].apply(lambda x: f"{int(x):,}".replace(",", "."))
+                resumen[col] = resumen[col]#.apply(lambda x: f"{int(x):,}".replace(",", "."))
 
         if "% Avance" in resumen.columns:
-            resumen["% Avance"] = resumen["% Avance"].apply(lambda x: f"{x:.1f}%".replace(".", ","))
+            resumen["% Avance"] = resumen["% Avance"]#.apply(lambda x: f"{x:.1f}%".replace(".", ","))
 
         st.dataframe(resumen, use_container_width=True, hide_index=True)
     else:
