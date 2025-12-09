@@ -180,10 +180,8 @@ def calcular_resumen_vrm(df: pd.DataFrame, archivo_metas: pd.DataFrame) -> pd.Da
         ).fillna(0).astype(int)
     )
 
-    # Filtrar metas correspondientes al día anterior
     metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_referencia]
 
-    # Agrupar metas por rol
     metas_usuario = (
         metas_dia.groupby("ROL")["META EQUIPO A LA FECHA"]
         .sum()
@@ -191,28 +189,27 @@ def calcular_resumen_vrm(df: pd.DataFrame, archivo_metas: pd.DataFrame) -> pd.Da
         .rename(columns={"META EQUIPO A LA FECHA": "Meta Proyectada a la Fecha"})
     )
 
-    # Normalizar estado
     df["estado_carpeta"] = df["estado_carpeta"].astype(str).str.lower()
 
-    # Condiciones por rol
     condiciones = {
-        "Análisis": ["calificada", "aprobada", "auditada"],
-        "Supervisión": ["aprobada", "auditada"],
+        "Análisis": ["calificada"],
+        "Supervisión": ["aprobada"],
         "Auditoria": ["auditada"]
     }
 
-    # Calcular carpetas revisadas por rol según condiciones
+    revisadas_total = pd.Series([False] * len(df), index=df.index)
     resultados = []
+
     for rol, estados in condiciones.items():
-        revisadas = df[df["estado_carpeta"].isin(estados)].shape[0]
+        mask = df["estado_carpeta"].isin(estados) & (~revisadas_total)
+        revisadas = mask.sum()
+        revisadas_total = revisadas_total | mask
         resultados.append({"ROL": rol, "Carpetas Revisadas": revisadas})
 
     df_revisadas = pd.DataFrame(resultados)
 
-    # Unir metas con revisadas
     resumen = pd.merge(metas_usuario, df_revisadas, on="ROL", how="outer").fillna(0)
 
-    # Asegurar tipos y calcular porcentaje
     resumen["Meta Proyectada a la Fecha"] = pd.to_numeric(resumen["Meta Proyectada a la Fecha"], errors="coerce").fillna(0)
     resumen["Carpetas Revisadas"] = pd.to_numeric(resumen["Carpetas Revisadas"], errors="coerce").fillna(0)
 
