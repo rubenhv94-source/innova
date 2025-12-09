@@ -382,7 +382,12 @@ if st.sidebar.button("🔄 Refrescar datos"):
     st.rerun()
 
 df_base = get_datos_por_modulo(mod_actual)
-df_base = limpiar_datos_por_modulo(mod_actual, df_base)
+df_base = limpiar_datos_por_modulo(
+    mod_actual,
+    df_base,
+    archivo_metas=archivo_metas,
+    archivo_metas_rec=archivo_metas_rec
+)
 
 if df_base.empty:
     st.warning("No hay datos disponibles.")
