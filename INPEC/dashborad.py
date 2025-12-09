@@ -393,7 +393,7 @@ COLUMNAS_FILTRO = {
     "Cronograma": ["Etapa", "Actividad", "Estado", "Responsable_contractual"],
     "Entregables": ["NO. DE PAGO", "NO. DE ENTREGABLE", "ENTREGABLE", "ESTADO"],
     "VRM": ["estado_carpeta", "numero_opec", "nivel_x", "estado_rm"],
-    "Reclamaciones": ["nro_opec", "denominacion", "nivel", "estado_final"]
+    "Reclamaciones": ["nro_opec", "denominacion", "nivel", "estado_real"]
 }
 
 cols_filtro = COLUMNAS_FILTRO.get(mod_actual, [])
@@ -407,7 +407,7 @@ if st.sidebar.button("🧹 Borrar filtros"):
 filtros = generar_filtros_sidebar(df_base, cols_filtro, mod_actual)
 df_filtrado = aplicar_filtros_dinamicos(df_base, filtros)
 
-filtros_metr = {k: v for k, v in filtros.items() if k not in ["estado_carpeta", "estado_rm", "estado_final"]}
+filtros_metr = {k: v for k, v in filtros.items() if k not in ["estado_carpeta", "estado_rm", "estado_real"]}
 df_metr = aplicar_filtros_dinamicos(df_base, filtros_metr)
 
 st.title(f"{mod_actual}")
@@ -432,7 +432,7 @@ def mostrar_avance_por_rol(modulo: str, df_base: pd.DataFrame, df_metr: pd.DataF
     # Campos a excluir en filtros, según módulo
     filtros_excluir = {
         "VRM": ["estado_carpeta", "estado_rm"],
-        "Reclamaciones": ["estado_carpeta", "estado_final"]
+        "Reclamaciones": ["estado_carpeta", "estado_real"]
     }.get(modulo, ["estado_carpeta"])
 
     filtros_sin_estados = {
@@ -472,7 +472,7 @@ vis_default = {
     "Cronograma": ["Tabla", "Barras", "Barras"],
     "Entregables": ["Tabla", "Barras", "Anillo"],
     "VRM": ["Tabla", "Embudo", "Anillo"],
-    "Reclamaciones": ["Tabla", "Embudo"],#, "Anillo"],
+    "Reclamaciones": ["Tabla", "Embudo"], "Anillo"],
 }.get(mod_actual, ["Tabla"])
 vis_seleccionadas = vis_default
 
@@ -481,14 +481,14 @@ COLUMNAS_TABLA = {
     "Cronograma": ["NO.", "Etapa", "Actividad", "F INICIO P", "F FIN P", "Estado", "Fecha de cumplimiento", "Responsable_contractual"],
     "Entregables": ["NO. DE ENTREGABLE", "NO. DE PAGO", "ENTREGABLE", "ESTADO"],
     "VRM": ["convocatoria", "numero_opec", "nivel_x", "estado_rm", "estado_carpeta"],
-    "Reclamaciones": ["convocatoria", "nro_opec", "nivel", "estado_final", "estado_carpeta"],
+    "Reclamaciones": ["convocatoria", "nro_opec", "nivel", "estado_real", "estado_carpeta"],
 }
 
 COLUMNAS_GRAFICOS = {
     "Cronograma": {"barras": ["Estado", "Etapa"]},
     "Entregables": {"barras": ["ESTADO"], "anillo": ["NO. DE PAGO", "ESTADO"]},
     "VRM": {"embudo": "estado_carpeta", "anillo": "estado_rm"},
-    "Reclamaciones": {"embudo": "estado_carpeta", "anillo": "estado_final"},
+    "Reclamaciones": {"embudo": "estado_carpeta", "anillo": "estado_real"},
 }
 cols_graficos = COLUMNAS_GRAFICOS.get(mod_actual, {})
 cols_vis = COLUMNAS_TABLA.get(mod_actual, df_filtrado.columns[:5].tolist())
