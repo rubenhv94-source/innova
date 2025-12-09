@@ -453,7 +453,10 @@ def mostrar_avance_por_rol(modulo: str, df_base: pd.DataFrame, df_metr: pd.DataF
         st.dataframe(resumen, use_container_width=True, hide_index=True)
     else:
         st.info("No hay datos disponibles para el avance por rol.")
-        
+
+if mod_actual in ["VRM", "Reclamaciones"]:
+    mostrar_avance_por_rol(mod_actual, df_base, df_metr, filtros)
+
 # Visualizaciones por módulo (fijas)
 vis_default = {
     "Cronograma": ["Tabla", "Barras", "Barras"],
