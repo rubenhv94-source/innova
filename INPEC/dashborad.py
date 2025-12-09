@@ -232,7 +232,7 @@ def limpiar_datos_por_modulo(
 
     elif modulo == "Reclamaciones" and archivo_metas_rec is not None:
         resumen = calcular_resumen_vrm(df, archivo_metas_rec)
-        st.session_state["df_resumen_vrm"] = resumen
+        st.session_state["df_resumen_reclamaciones"] = resumen
 
     return df
 
@@ -419,6 +419,7 @@ def mostrar_avance_por_rol(modulo: str, df_base: pd.DataFrame, df_metr: pd.DataF
 
     st.subheader("📈 Avance por Rol")
 
+    # Campos a excluir en filtros, según módulo
     filtros_excluir = {
         "VRM": ["estado_carpeta", "estado_rm"],
         "Reclamaciones": ["estado_carpeta", "estado_final"]
@@ -428,29 +429,31 @@ def mostrar_avance_por_rol(modulo: str, df_base: pd.DataFrame, df_metr: pd.DataF
         k: v for k, v in filtros.items() if k not in filtros_excluir
     }
 
+    # Recalcular el resumen sin esos filtros
     df_sin_estados = aplicar_filtros_dinamicos(df_base, filtros_sin_estados)
     limpiar_datos_por_modulo(modulo, df_sin_estados)
 
-    resumen = st.session_state.get("df_resumen_vrm")
+    # Acceder a la clave de sesión según el módulo
+    resumen_key = {
+        "VRM": "df_resumen_vrm",
+        "Reclamaciones": "df_resumen_reclamaciones"
+    }.get(modulo)
+
+    resumen = st.session_state.get(resumen_key)
 
     if resumen is not None and not resumen.empty:
         cols_numericas = ["Meta Proyectada a la Fecha", "Carpetas Revisadas"]
         for col in cols_numericas:
             if col in resumen.columns:
-                resumen[col] = resumen[col]
+                resumen[col] = resumen[col].apply(lambda x: f"{int(x):,}".replace(",", "."))
 
         if "% Avance" in resumen.columns:
-            resumen["% Avance"] = resumen["% Avance"]
+            resumen["% Avance"] = resumen["% Avance"].apply(lambda x: f"{x:.1f}%".replace(".", ","))
 
         st.dataframe(resumen, use_container_width=True, hide_index=True)
     else:
         st.info("No hay datos disponibles para el avance por rol.")
-
-
-# ✅ USO para VRM y Reclamaciones
-if mod_actual in ["VRM", "Reclamaciones"]:
-    mostrar_avance_por_rol(mod_actual, df_base, df_metr, filtros)
-
+        
 # Visualizaciones por módulo (fijas)
 vis_default = {
     "Cronograma": ["Tabla", "Barras", "Barras"],
