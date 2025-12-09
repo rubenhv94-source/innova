@@ -164,9 +164,7 @@ def procesar_entregables(df: pd.DataFrame) -> pd.DataFrame:
     )
     return df
 
-def calcular_resumen_vrm(
-    df: pd.DataFrame, archivo_metas: pd.DataFrame
-) -> pd.DataFrame:
+def calcular_resumen_vrm(df: pd.DataFrame, archivo_metas: pd.DataFrame) -> pd.DataFrame:
     tz = timezone("America/Bogota")
     hoy = datetime.now(tz).date()
     fecha_referencia = hoy - timedelta(days=1)
@@ -186,7 +184,7 @@ def calcular_resumen_vrm(
     metas_usuario = metas_dia.groupby("ROL")["META EQUIPO A LA FECHA"].sum().reset_index()
     metas_usuario.rename(columns={"META EQUIPO A LA FECHA": "Meta Proyectada a la Fecha"}, inplace=True)
 
-    df["estado_carpeta"] = df["estado_carpeta"].str.lower()
+    df["estado_carpeta"] = df["estado_carpeta"].astype(str).str.lower()
 
     condiciones = {
         "Análisis": ["calificada", "aprobada", "auditada"],
@@ -194,16 +192,19 @@ def calcular_resumen_vrm(
         "Auditoria": ["auditada"]
     }
 
-    resultados = [
-        {"ROL": rol, "Carpetas Revisadas": df["estado_carpeta"].isin(estados).sum()}
-        for rol, estados in condiciones.items()
-    ]
+    resultados = []
+
+    for rol, estados in condiciones.items():
+        # Contar solo las carpetas que cumplen las condiciones definidas para ese rol
+        revisadas = df[df["estado_carpeta"].isin(estados)].shape[0]
+        resultados.append({"ROL": rol, "Carpetas Revisadas": revisadas})
 
     df_revisadas = pd.DataFrame(resultados)
 
     resumen = pd.merge(metas_usuario, df_revisadas, on="ROL", how="outer").fillna(0)
     resumen["Meta Proyectada a la Fecha"] = pd.to_numeric(resumen["Meta Proyectada a la Fecha"], errors="coerce").fillna(0)
     resumen["Carpetas Revisadas"] = pd.to_numeric(resumen["Carpetas Revisadas"], errors="coerce").fillna(0)
+
     resumen["% Avance"] = np.where(
         resumen["Meta Proyectada a la Fecha"] == 0,
         0,
