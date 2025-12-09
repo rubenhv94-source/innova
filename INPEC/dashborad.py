@@ -125,12 +125,15 @@ def cargar_csv(url: str) -> pd.DataFrame:
 URLS = {
     "Cronograma": "https://docs.google.com/spreadsheets/d/e/2PACX-1vThSek_BzK-DeNwhsjcmqSWJLz4vNQ_bBQJ8cXV_pEjCLGN8T64WcIqsLEfQIYcO9dVLCPHfdnNdfhC/pub?gid=1775323779&single=true&output=csv",
     "Entregables": "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXU3Fh-35s_7ZysWWnWQpQhhHxMst_qqFznNeBA1xmvMVYpo7yVODZTaHTqh12ptDViA6CYLLaZWre/pub?gid=1749869584&single=true&output=csv",
-    "VRM": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1ZNrmbDDZPZbj0-ovO6HRgW7m2MAp3efItgdv8QjOny04F4D5knQ4E2RvMcmQB-L6OS00F13xiiWQ/pub?gid=1175528082&single=true&output=csv"#,
-    #"Reclamaciones": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1ZNrmbDDZPZbj0-ovO6HRgW7m2MAp3efItgdv8QjOny04F4D5knQ4E2RvMcmQB-L6OS00F13xiiWQ/pub?gid=1175528082&single=true&output=csv"
+    "VRM": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1ZNrmbDDZPZbj0-ovO6HRgW7m2MAp3efItgdv8QjOny04F4D5knQ4E2RvMcmQB-L6OS00F13xiiWQ/pub?gid=1175528082&single=true&output=csv",
+    "Reclamaciones": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQY3MrZCwuoQYNnM5TefaK2Zj7v7DUUY_TSVHuitoa705h6SO0v89Q4JSKNCIiE8QJcO2H_ZWcKCYiN/pub?gid=0&single=true&output=csv"
 }
 
 hoja_metas = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1ZNrmbDDZPZbj0-ovO6HRgW7m2MAp3efItgdv8QjOny04F4D5knQ4E2RvMcmQB-L6OS00F13xiiWQ/pub?gid=1567229219&single=true&output=csv"
 archivo_metas = cargar_csv(hoja_metas)
+
+hoja_metas_rec = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQY3MrZCwuoQYNnM5TefaK2Zj7v7DUUY_TSVHuitoa705h6SO0v89Q4JSKNCIiE8QJcO2H_ZWcKCYiN/pub?gid=680702191&single=true&output=csv"
+archivo_metas_rec = cargar_csv(hoja_metas_rec)
 
 @st.cache_data(ttl=600)
 def get_datos_por_modulo(modulo: str) -> pd.DataFrame:
@@ -177,6 +180,71 @@ def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
         )
     
         metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_referencia]
+    
+        metas_usuario = (
+            metas_dia.groupby("ROL")["META EQUIPO A LA FECHA"]
+            .sum()
+            .reset_index()
+        )
+        metas_usuario.rename(
+            columns={"META EQUIPO A LA FECHA": "Meta Proyectada a la Fecha"},
+            inplace=True
+        )
+    
+        df["estado_carpeta"] = df["estado_carpeta"].str.lower()
+
+        condiciones = {
+            "Análisis": ["calificada", "aprobada", "auditada"],
+            "Supervisión": ["aprobada", "auditada"],
+            "Auditoria": ["auditada"]
+        }
+        
+        resultados = []
+        for rol, estados in condiciones.items():
+            revisadas = df["estado_carpeta"].isin(estados).sum()
+            resultados.append({"ROL": rol, "Carpetas Revisadas": revisadas})
+        
+        df_revisadas = pd.DataFrame(resultados)
+    
+        resumen = pd.merge(metas_usuario, df_revisadas, on="ROL", how="outer").fillna(0)
+    
+        resumen["Meta Proyectada a la Fecha"] = (pd.to_numeric(resumen["Meta Proyectada a la Fecha"], errors="coerce").fillna(0))
+        resumen["Carpetas Revisadas"] = (pd.to_numeric(resumen["Carpetas Revisadas"], errors="coerce").fillna(0))
+        
+        #resumen = (
+        #   resumen.groupby("ROL", as_index=False)[["Meta Proyectada a la Fecha", "Carpetas Revisadas"]]
+        #    .sum()
+        #)
+        resumen["% Avance"] = np.where(
+            resumen["Meta Proyectada a la Fecha"] == 0,
+            0,
+            (resumen["Carpetas Revisadas"] / resumen["Meta Proyectada a la Fecha"] * 100).round(2),
+        )
+
+        st.session_state["df_resumen_vrm"] = resumen
+
+    return df
+
+    if modulo == "Reclamaciones":
+    
+        tz = timezone("America/Bogota")
+        hoy = datetime.now(tz).date()
+        fecha_referencia = hoy - timedelta(days=1)
+    
+        archivo_metas_rec["FECHA"] = pd.to_datetime(archivo_metas_rec["FECHA"]).dt.date
+        archivo_metas_rec["META EQUIPO A LA FECHA"] = (
+            pd.to_numeric(
+                archivo_metas_rec["META EQUIPO A LA FECHA"]
+                .astype(str) 
+                .str.replace("-", "0")
+                .str.replace(".", ""),
+                errors="coerce"
+            )
+            .fillna(0)
+            .astype(int)
+        )
+    
+        metas_dia = archivo_metas_rec[archivo_metas_rec["FECHA"] == fecha_referencia]
     
         metas_usuario = (
             metas_dia.groupby("ROL")["META EQUIPO A LA FECHA"]
@@ -337,7 +405,8 @@ st.sidebar.image("assets/Andina_Blanco.png", width=400)
 modulos_con_iconos = {
     "Cronograma": "🗓️ Cronograma",
     "Entregables": "✔️ Entregables",
-    "VRM": "📊 VRM"
+    "VRM": "📊 VRM",
+    "Reclamaciones": "📊 Reclamaciones",
 }
 
 # Mostrar valores bonitos en el menú
@@ -369,7 +438,7 @@ COLUMNAS_FILTRO = {
     "Cronograma": ["Etapa", "Actividad", "Estado", "Responsable_contractual"],
     "Entregables": ["NO. DE PAGO", "NO. DE ENTREGABLE", "ENTREGABLE", "ESTADO"],
     "VRM": ["estado_carpeta", "numero_opec", "nivel_x", "estado_rm"],
-    #"Reclamaciones": ["numero_opec", "nivel_x", "estado_carpeta"]
+    "Reclamaciones": ["nro_opec", "denominacion", "nivel", "estado_final"]
 }
 
 cols_filtro = COLUMNAS_FILTRO.get(mod_actual, [])
@@ -430,12 +499,54 @@ if mod_actual == "VRM":
     else:
         st.info("No hay datos disponibles para el avance por rol.")
 
+if mod_actual == "Reclamaciones":
+    c1, c2, c3, c4 = st.columns(4)
+
+    total = len(df_metr)
+    ejecutadas = len(df_metr[df_metr["estado_carpeta"] == "auditada"])
+    diferencia = total - ejecutadas
+    porcentaje = (ejecutadas / total * 100) if total else 0
+
+    c1.metric("🎯 Meta Proyectada", f"{total:,}".replace(",", "."))
+    c2.metric("✔️ Meta Ejecutada", f"{ejecutadas:,}".replace(",", "."))
+    c3.metric("↔️ Diferencia", f"{diferencia:,}".replace(",", "."))
+    c4.metric("〽️ Porcentaje", f"{porcentaje:.1f}%")
+
+    st.subheader("📈 Avance por Rol")
+    
+    # --- Crear copia del DataFrame sin aplicar filtros de estado_carpeta ni estado_rm
+    filtros_sin_estados = {k: v for k, v in filtros.items() if k not in ["estado_carpeta", "estado_rm"]}
+    df_sin_estados = aplicar_filtros_dinamicos(df_base, filtros_sin_estados)
+    
+    # --- Recalcular el resumen VRM con ese subconjunto sin filtros de estado
+    if mod_actual == "Reclamaciones":
+        limpiar_datos_por_modulo(mod_actual, df_sin_estados)
+    
+    resumen = st.session_state.get("df_resumen_vrm")
+    
+    if resumen is not None and not resumen.empty:
+        # Identificar columnas numéricas
+        cols_numericas = ["Meta Proyectada a la Fecha", "Carpetas Revisadas"]
+    
+        # Formatear con separador de miles (punto) y sin decimales
+        for col in cols_numericas:
+            if col in resumen.columns:
+                resumen[col] = resumen[col].apply(lambda x: f"{int(x):,}".replace(",", "."))
+    
+        # Formatear el porcentaje con símbolo y coma decimal
+        if "% Avance" in resumen.columns:
+            resumen["% Avance"] = resumen["% Avance"].apply(lambda x: f"{x:.1f}%".replace(".", ","))
+    
+        st.dataframe(resumen, use_container_width=True, hide_index=True)
+    else:
+        st.info("No hay datos disponibles para el avance por rol.")
+
 # Visualizaciones por módulo (fijas)
 vis_default = {
     "Cronograma": ["Tabla", "Barras", "Barras"],
     "Entregables": ["Tabla", "Barras", "Anillo"],
     "VRM": ["Tabla", "Embudo", "Anillo"],
-    #"Reclamaciones": ["Tabla", "Embudo"]
+    "Reclamaciones": ["Tabla", "Embudo", "Anillo"],
 }.get(mod_actual, ["Tabla"])
 vis_seleccionadas = vis_default
 
@@ -444,14 +555,14 @@ COLUMNAS_TABLA = {
     "Cronograma": ["NO.", "Etapa", "Actividad", "F INICIO P", "F FIN P", "Estado", "Fecha de cumplimiento", "Responsable_contractual"],
     "Entregables": ["NO. DE ENTREGABLE", "NO. DE PAGO", "ENTREGABLE", "ESTADO"],
     "VRM": ["convocatoria", "numero_opec", "nivel_x", "estado_rm", "estado_carpeta"],
-    #"Reclamaciones": ["numero_opec", "nivel_x", "estado_carpeta"]
+    "Reclamaciones": ["convocatoria", "nro_opec", "nivel", "estado_final", "estado_carpeta"],
 }
 
 COLUMNAS_GRAFICOS = {
     "Cronograma": {"barras": ["Estado", "Etapa"]},
     "Entregables": {"barras": ["ESTADO"], "anillo": ["NO. DE PAGO", "ESTADO"]},
-    "VRM": {"embudo": "estado_carpeta", "anillo": "estado_rm"}#,
-    #"Reclamaciones": {"barras": "estado_carpeta", "anillo": "estado_carpeta", "embudo": "estado_carpeta"}
+    "VRM": {"embudo": "estado_carpeta", "anillo": "estado_rm"},
+    "Reclamaciones": {"embudo": "estado_carpeta", "anillo": "estado_final"},
 }
 cols_graficos = COLUMNAS_GRAFICOS.get(mod_actual, {})
 cols_vis = COLUMNAS_TABLA.get(mod_actual, df_filtrado.columns[:5].tolist())
