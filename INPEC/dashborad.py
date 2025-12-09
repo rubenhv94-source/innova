@@ -345,7 +345,10 @@ def grafico_anillo(df: pd.DataFrame, columnas: list[str], titulo: str):
 # ===================================
 # 🚦 NAVEGACIÓN Y RENDER
 # ===================================
-st.markdown("<h1 style='text-align:center; font-weight:700; color:#1F9924'>Proceso de Selección INPEC Cuerpo de Custodia y Vigilancia 11</h1>", unsafe_allow_html=True)
+st.markdown(
+    "<h1 style='text-align:center; font-weight:700; color:#1F9924'>Proceso de Selección INPEC Cuerpo de Custodia y Vigilancia 11</h1>",
+    unsafe_allow_html=True
+)
 st.sidebar.image("assets/Andina_Blanco.png", width=400)
 
 modulos_con_iconos = {
@@ -355,13 +358,11 @@ modulos_con_iconos = {
     "Reclamaciones": "📊 Reclamaciones",
 }
 
-# Mostrar valores bonitos en el menú
 seleccion_visual = st.sidebar.radio(
     "Selecciona módulo:",
     list(modulos_con_iconos.values())
 )
 
-# Obtener la clave real del módulo
 mod_actual = next(
     (clave for clave, valor in modulos_con_iconos.items() if valor == seleccion_visual),
     None
@@ -378,8 +379,6 @@ if df_base.empty:
     st.warning("No hay datos disponibles.")
     st.stop()
 
-# Filtros
-
 COLUMNAS_FILTRO = {
     "Cronograma": ["Etapa", "Actividad", "Estado", "Responsable_contractual"],
     "Entregables": ["NO. DE PAGO", "NO. DE ENTREGABLE", "ENTREGABLE", "ESTADO"],
@@ -394,16 +393,18 @@ if st.sidebar.button("🧹 Borrar filtros"):
         key = f"filtro_{mod_actual}_{col}"
         st.session_state[key] = "Todos"
     st.rerun()
-    
+
 filtros = generar_filtros_sidebar(df_base, cols_filtro, mod_actual)
 df_filtrado = aplicar_filtros_dinamicos(df_base, filtros)
 
-filtros_metr = {k: v for k, v in filtros.items() if k not in ["estado_carpeta", "estado_rm"]}
+filtros_metr = {k: v for k, v in filtros.items() if k not in ["estado_carpeta", "estado_rm", "estado_final"]}
 df_metr = aplicar_filtros_dinamicos(df_base, filtros_metr)
 
 st.title(f"{mod_actual}")
 
-if mod_actual == "VRM":
+
+# ✅ NUEVA FUNCIÓN para VRM y Reclamaciones
+def mostrar_avance_por_rol(modulo: str, df_base: pd.DataFrame, df_metr: pd.DataFrame, filtros: dict):
     c1, c2, c3, c4 = st.columns(4)
 
     total = len(df_metr)
@@ -417,75 +418,38 @@ if mod_actual == "VRM":
     c4.metric("〽️ Porcentaje", f"{porcentaje:.1f}%")
 
     st.subheader("📈 Avance por Rol")
-    
-    # --- Crear copia del DataFrame sin aplicar filtros de estado_carpeta ni estado_rm
-    filtros_sin_estados = {k: v for k, v in filtros.items() if k not in ["estado_carpeta", "estado_rm"]}
+
+    filtros_excluir = {
+        "VRM": ["estado_carpeta", "estado_rm"],
+        "Reclamaciones": ["estado_carpeta", "estado_final"]
+    }.get(modulo, ["estado_carpeta"])
+
+    filtros_sin_estados = {
+        k: v for k, v in filtros.items() if k not in filtros_excluir
+    }
+
     df_sin_estados = aplicar_filtros_dinamicos(df_base, filtros_sin_estados)
-    
-    # --- Recalcular el resumen VRM con ese subconjunto sin filtros de estado
-    if mod_actual == "VRM":
-        limpiar_datos_por_modulo(mod_actual, df_sin_estados)
-    
+    limpiar_datos_por_modulo(modulo, df_sin_estados)
+
     resumen = st.session_state.get("df_resumen_vrm")
-    
+
     if resumen is not None and not resumen.empty:
-        # Identificar columnas numéricas
         cols_numericas = ["Meta Proyectada a la Fecha", "Carpetas Revisadas"]
-    
-        # Formatear con separador de miles (punto) y sin decimales
         for col in cols_numericas:
             if col in resumen.columns:
-                resumen[col] = resumen[col]#.apply(lambda x: f"{int(x):,}".replace(",", "."))
-    
-        # Formatear el porcentaje con símbolo y coma decimal
+                resumen[col] = resumen[col]
+
         if "% Avance" in resumen.columns:
-            resumen["% Avance"] = resumen["% Avance"]#.apply(lambda x: f"{x:.1f}%".replace(".", ","))
-    
+            resumen["% Avance"] = resumen["% Avance"]
+
         st.dataframe(resumen, use_container_width=True, hide_index=True)
     else:
         st.info("No hay datos disponibles para el avance por rol.")
 
-if mod_actual == "Reclamaciones":
-    c1, c2, c3, c4 = st.columns(4)
 
-    total = len(df_metr)
-    ejecutadas = len(df_metr[df_metr["estado_carpeta"] == "auditada"])
-    diferencia = total - ejecutadas
-    porcentaje = (ejecutadas / total * 100) if total else 0
-
-    c1.metric("🎯 Meta Proyectada", f"{total:,}".replace(",", "."))
-    c2.metric("✔️ Meta Ejecutada", f"{ejecutadas:,}".replace(",", "."))
-    c3.metric("↔️ Diferencia", f"{diferencia:,}".replace(",", "."))
-    c4.metric("〽️ Porcentaje", f"{porcentaje:.1f}%")
-
-    st.subheader("📈 Avance por Rol")
-    
-    # --- Crear copia del DataFrame sin aplicar filtros de estado_carpeta ni estado_rm
-    filtros_sin_estados = {k: v for k, v in filtros.items() if k not in ["estado_carpeta", "estado_final"]}
-    df_sin_estados = aplicar_filtros_dinamicos(df_base, filtros_sin_estados)
-    
-    # --- Recalcular el resumen VRM con ese subconjunto sin filtros de estado
-    if mod_actual == "Reclamaciones":
-        limpiar_datos_por_modulo(mod_actual, df_sin_estados)
-    
-    resumen = st.session_state.get("df_resumen_vrm")
-    
-    if resumen is not None and not resumen.empty:
-        # Identificar columnas numéricas
-        cols_numericas = ["Meta Proyectada a la Fecha", "Carpetas Revisadas"]
-    
-        # Formatear con separador de miles (punto) y sin decimales
-        for col in cols_numericas:
-            if col in resumen.columns:
-                resumen[col] = resumen[col]#.apply(lambda x: f"{int(x):,}".replace(",", "."))
-    
-        # Formatear el porcentaje con símbolo y coma decimal
-        if "% Avance" in resumen.columns:
-            resumen["% Avance"] = resumen["% Avance"]#.apply(lambda x: f"{x:.1f}%".replace(".", ","))
-    
-        st.dataframe(resumen, use_container_width=True, hide_index=True)
-    else:
-        st.info("No hay datos disponibles para el avance por rol.")
+# ✅ USO para VRM y Reclamaciones
+if mod_actual in ["VRM", "Reclamaciones"]:
+    mostrar_avance_por_rol(mod_actual, df_base, df_metr, filtros)
 
 # Visualizaciones por módulo (fijas)
 vis_default = {
