@@ -535,7 +535,7 @@ if mod_actual == "Reclamaciones":
     
         # Formatear el porcentaje con símbolo y coma decimal
         if "% Avance" in resumen.columns:
-            resumen["% Avance"] = resumen["% Avance"].apply(lambda x: f"{x:.1f}%".replace(".", ","))
+            resumen["% Avance"] = resumen["% Avance"]#.apply(lambda x: f"{x:.1f}%".replace(".", ","))
     
         st.dataframe(resumen, use_container_width=True, hide_index=True)
     else:
