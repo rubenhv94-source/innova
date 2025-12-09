@@ -140,152 +140,98 @@ def get_datos_por_modulo(modulo: str) -> pd.DataFrame:
     url = URLS.get(modulo)
     return cargar_csv(url) if url else pd.DataFrame()
 
-def limpiar_datos_por_modulo(modulo: str, df: pd.DataFrame) -> pd.DataFrame:
+def limpiar_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     for col in df.columns:
         df[col] = df[col].astype(str).str.strip()
-
-    if modulo == "Cronograma" and "Fecha Inicio" in df.columns:
-        df["Fecha Inicio"] = pd.to_datetime(df["Fecha Inicio"], errors="coerce")   
-
-    if modulo == "Entregables":
-        df["ESTADO"] = np.where(
-            (df["REALIZADO POR LA FUAA"] == "TRUE") & (df["APROBADO POR LA CNSC"] == "TRUE"), "Aprobado",
-            np.where(
-                (df["REALIZADO POR LA FUAA"] == "TRUE") & 
-                (df["APROBADO POR LA CNSC"] == "FALSE") & 
-                (df["OBSERVACIÓN Y/O STATUS"].str.lower().str.contains("rechaz")),
-                "Rechazado",
-                np.where(df["REALIZADO POR LA FUAA"] == "TRUE", "Entregado", "Pendiente")
-            )
-        )
-
-    if modulo == "VRM":
-    
-        tz = timezone("America/Bogota")
-        hoy = datetime.now(tz).date()
-        fecha_referencia = hoy - timedelta(days=1)
-    
-        archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"]).dt.date
-        archivo_metas["META EQUIPO A LA FECHA"] = (
-            pd.to_numeric(
-                archivo_metas["META EQUIPO A LA FECHA"]
-                .astype(str) 
-                .str.replace("-", "0")
-                .str.replace(".", ""),
-                errors="coerce"
-            )
-            .fillna(0)
-            .astype(int)
-        )
-    
-        metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_referencia]
-    
-        metas_usuario = (
-            metas_dia.groupby("ROL")["META EQUIPO A LA FECHA"]
-            .sum()
-            .reset_index()
-        )
-        metas_usuario.rename(
-            columns={"META EQUIPO A LA FECHA": "Meta Proyectada a la Fecha"},
-            inplace=True
-        )
-    
-        df["estado_carpeta"] = df["estado_carpeta"].str.lower()
-
-        condiciones = {
-            "Análisis": ["calificada", "aprobada", "auditada"],
-            "Supervisión": ["aprobada", "auditada"],
-            "Auditoria": ["auditada"]
-        }
-        
-        resultados = []
-        for rol, estados in condiciones.items():
-            revisadas = df["estado_carpeta"].isin(estados).sum()
-            resultados.append({"ROL": rol, "Carpetas Revisadas": revisadas})
-        
-        df_revisadas = pd.DataFrame(resultados)
-    
-        resumen = pd.merge(metas_usuario, df_revisadas, on="ROL", how="outer").fillna(0)
-    
-        resumen["Meta Proyectada a la Fecha"] = (pd.to_numeric(resumen["Meta Proyectada a la Fecha"], errors="coerce").fillna(0))
-        resumen["Carpetas Revisadas"] = (pd.to_numeric(resumen["Carpetas Revisadas"], errors="coerce").fillna(0))
-        
-        #resumen = (
-        #   resumen.groupby("ROL", as_index=False)[["Meta Proyectada a la Fecha", "Carpetas Revisadas"]]
-        #    .sum()
-        #)
-        resumen["% Avance"] = np.where(
-            resumen["Meta Proyectada a la Fecha"] == 0,
-            0,
-            (resumen["Carpetas Revisadas"] / resumen["Meta Proyectada a la Fecha"] * 100).round(2),
-        )
-
-        st.session_state["df_resumen_vrm"] = resumen
-
     return df
 
-    if modulo == "Reclamaciones":
-    
-        tz = timezone("America/Bogota")
-        hoy = datetime.now(tz).date()
-        fecha_referencia = hoy - timedelta(days=1)
-    
-        archivo_metas_rec["FECHA"] = pd.to_datetime(archivo_metas_rec["FECHA"]).dt.date
-        archivo_metas_rec["META EQUIPO A LA FECHA"] = (
-            pd.to_numeric(
-                archivo_metas_rec["META EQUIPO A LA FECHA"]
-                .astype(str) 
-                .str.replace("-", "0")
-                .str.replace(".", ""),
-                errors="coerce"
-            )
-            .fillna(0)
-            .astype(int)
-        )
-    
-        metas_dia = archivo_metas_rec[archivo_metas_rec["FECHA"] == fecha_referencia]
-    
-        metas_usuario = (
-            metas_dia.groupby("ROL")["META EQUIPO A LA FECHA"]
-            .sum()
-            .reset_index()
-        )
-        metas_usuario.rename(
-            columns={"META EQUIPO A LA FECHA": "Meta Proyectada a la Fecha"},
-            inplace=True
-        )
-    
-        df["estado_carpeta"] = df["estado_carpeta"].str.lower()
+def procesar_cronograma(df: pd.DataFrame) -> pd.DataFrame:
+    if "Fecha Inicio" in df.columns:
+        df["Fecha Inicio"] = pd.to_datetime(df["Fecha Inicio"], errors="coerce")
+    return df
 
-        condiciones = {
-            "Análisis": ["calificada", "aprobada", "auditada"],
-            "Supervisión": ["aprobada", "auditada"],
-            "Auditoria": ["auditada"]
-        }
-        
-        resultados = []
-        for rol, estados in condiciones.items():
-            revisadas = df["estado_carpeta"].isin(estados).sum()
-            resultados.append({"ROL": rol, "Carpetas Revisadas": revisadas})
-        
-        df_revisadas = pd.DataFrame(resultados)
-    
-        resumen = pd.merge(metas_usuario, df_revisadas, on="ROL", how="outer").fillna(0)
-    
-        resumen["Meta Proyectada a la Fecha"] = (pd.to_numeric(resumen["Meta Proyectada a la Fecha"], errors="coerce").fillna(0))
-        resumen["Carpetas Revisadas"] = (pd.to_numeric(resumen["Carpetas Revisadas"], errors="coerce").fillna(0))
-        
-        #resumen = (
-        #   resumen.groupby("ROL", as_index=False)[["Meta Proyectada a la Fecha", "Carpetas Revisadas"]]
-        #    .sum()
-        #)
-        resumen["% Avance"] = np.where(
-            resumen["Meta Proyectada a la Fecha"] == 0,
-            0,
-            (resumen["Carpetas Revisadas"] / resumen["Meta Proyectada a la Fecha"] * 100).round(2),
+def procesar_entregables(df: pd.DataFrame) -> pd.DataFrame:
+    df["ESTADO"] = np.where(
+        (df["REALIZADO POR LA FUAA"] == "TRUE") & (df["APROBADO POR LA CNSC"] == "TRUE"), "Aprobado",
+        np.where(
+            (df["REALIZADO POR LA FUAA"] == "TRUE") &
+            (df["APROBADO POR LA CNSC"] == "FALSE") &
+            (df["OBSERVACIÓN Y/O STATUS"].str.lower().str.contains("rechaz")),
+            "Rechazado",
+            np.where(df["REALIZADO POR LA FUAA"] == "TRUE", "Entregado", "Pendiente")
         )
+    )
+    return df
 
+def calcular_resumen_vrm(
+    df: pd.DataFrame, archivo_metas: pd.DataFrame
+) -> pd.DataFrame:
+    tz = timezone("America/Bogota")
+    hoy = datetime.now(tz).date()
+    fecha_referencia = hoy - timedelta(days=1)
+
+    archivo_metas["FECHA"] = pd.to_datetime(archivo_metas["FECHA"]).dt.date
+    archivo_metas["META EQUIPO A LA FECHA"] = (
+        pd.to_numeric(
+            archivo_metas["META EQUIPO A LA FECHA"]
+            .astype(str)
+            .str.replace("-", "0")
+            .str.replace(".", ""),
+            errors="coerce"
+        ).fillna(0).astype(int)
+    )
+
+    metas_dia = archivo_metas[archivo_metas["FECHA"] == fecha_referencia]
+    metas_usuario = metas_dia.groupby("ROL")["META EQUIPO A LA FECHA"].sum().reset_index()
+    metas_usuario.rename(columns={"META EQUIPO A LA FECHA": "Meta Proyectada a la Fecha"}, inplace=True)
+
+    df["estado_carpeta"] = df["estado_carpeta"].str.lower()
+
+    condiciones = {
+        "Análisis": ["calificada", "aprobada", "auditada"],
+        "Supervisión": ["aprobada", "auditada"],
+        "Auditoria": ["auditada"]
+    }
+
+    resultados = [
+        {"ROL": rol, "Carpetas Revisadas": df["estado_carpeta"].isin(estados).sum()}
+        for rol, estados in condiciones.items()
+    ]
+
+    df_revisadas = pd.DataFrame(resultados)
+
+    resumen = pd.merge(metas_usuario, df_revisadas, on="ROL", how="outer").fillna(0)
+    resumen["Meta Proyectada a la Fecha"] = pd.to_numeric(resumen["Meta Proyectada a la Fecha"], errors="coerce").fillna(0)
+    resumen["Carpetas Revisadas"] = pd.to_numeric(resumen["Carpetas Revisadas"], errors="coerce").fillna(0)
+    resumen["% Avance"] = np.where(
+        resumen["Meta Proyectada a la Fecha"] == 0,
+        0,
+        (resumen["Carpetas Revisadas"] / resumen["Meta Proyectada a la Fecha"] * 100).round(2)
+    )
+
+    return resumen
+
+def limpiar_datos_por_modulo(
+    modulo: str,
+    df: pd.DataFrame,
+    archivo_metas: pd.DataFrame = None,
+    archivo_metas_rec: pd.DataFrame = None
+) -> pd.DataFrame:
+    df = limpiar_dataframe(df)
+
+    if modulo == "Cronograma":
+        df = procesar_cronograma(df)
+
+    elif modulo == "Entregables":
+        df = procesar_entregables(df)
+
+    elif modulo == "VRM" and archivo_metas is not None:
+        resumen = calcular_resumen_vrm(df, archivo_metas)
+        st.session_state["df_resumen_vrm"] = resumen
+
+    elif modulo == "Reclamaciones" and archivo_metas_rec is not None:
+        resumen = calcular_resumen_vrm(df, archivo_metas_rec)
         st.session_state["df_resumen_vrm"] = resumen
 
     return df
@@ -515,7 +461,7 @@ if mod_actual == "Reclamaciones":
     st.subheader("📈 Avance por Rol")
     
     # --- Crear copia del DataFrame sin aplicar filtros de estado_carpeta ni estado_rm
-    filtros_sin_estados = {k: v for k, v in filtros.items() if k not in ["estado_carpeta", "estado_rm"]}
+    filtros_sin_estados = {k: v for k, v in filtros.items() if k not in ["estado_carpeta", "estado_final"]}
     df_sin_estados = aplicar_filtros_dinamicos(df_base, filtros_sin_estados)
     
     # --- Recalcular el resumen VRM con ese subconjunto sin filtros de estado
