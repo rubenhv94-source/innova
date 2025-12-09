@@ -192,18 +192,14 @@ def calcular_resumen_vrm(df: pd.DataFrame, archivo_metas: pd.DataFrame) -> pd.Da
     df["estado_carpeta"] = df["estado_carpeta"].astype(str).str.lower()
 
     condiciones = {
-        "Análisis": ["calificada"],
-        "Supervisión": ["aprobada"],
+        "Análisis": ["calificada", "aprobada", "auditada"],
+        "Supervisión": ["aprobada", "auditada"],
         "Auditoria": ["auditada"]
     }
 
-    revisadas_total = pd.Series([False] * len(df), index=df.index)
     resultados = []
-
     for rol, estados in condiciones.items():
-        mask = df["estado_carpeta"].isin(estados) & (~revisadas_total)
-        revisadas = mask.sum()
-        revisadas_total = revisadas_total | mask
+        revisadas = df[df["estado_carpeta"].isin(estados)].shape[0]
         resultados.append({"ROL": rol, "Carpetas Revisadas": revisadas})
 
     df_revisadas = pd.DataFrame(resultados)
