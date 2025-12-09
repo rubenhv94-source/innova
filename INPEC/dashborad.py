@@ -435,11 +435,11 @@ if mod_actual == "VRM":
         # Formatear con separador de miles (punto) y sin decimales
         for col in cols_numericas:
             if col in resumen.columns:
-                resumen[col] = resumen[col].apply(lambda x: f"{int(x):,}".replace(",", "."))
+                resumen[col] = resumen[col]#.apply(lambda x: f"{int(x):,}".replace(",", "."))
     
         # Formatear el porcentaje con símbolo y coma decimal
         if "% Avance" in resumen.columns:
-            resumen["% Avance"] = resumen["% Avance"].apply(lambda x: f"{x:.1f}%".replace(".", ","))
+            resumen["% Avance"] = resumen["% Avance"]#.apply(lambda x: f"{x:.1f}%".replace(".", ","))
     
         st.dataframe(resumen, use_container_width=True, hide_index=True)
     else:
