@@ -472,7 +472,7 @@ vis_default = {
     "Cronograma": ["Tabla", "Barras", "Barras"],
     "Entregables": ["Tabla", "Barras", "Anillo"],
     "VRM": ["Tabla", "Embudo", "Anillo"],
-    "Reclamaciones": ["Tabla", "Embudo"], "Anillo"],
+    "Reclamaciones": ["Tabla", "Embudo", "Anillo"],
 }.get(mod_actual, ["Tabla"])
 vis_seleccionadas = vis_default
 
